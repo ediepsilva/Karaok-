@@ -153,9 +153,9 @@ body {
 }
 
 .table-head,
-.song-row {
+.song-item {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 60px;
+  grid-template-columns: 1.4fr 1fr 60px 96px;
   gap: 10px;
   align-items: center;
 }
@@ -178,9 +178,13 @@ body {
 }
 
 .song-row {
+  grid-column: 1 / 4;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
+  padding: 8px 0;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -189,11 +193,16 @@ body {
   font: inherit;
 }
 
-.song-row:hover {
+.song-item {
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.song-item:hover {
   background: var(--panel-2);
 }
 
-.song-row.active {
+.song-item.active {
   background: rgba(124, 92, 255, 0.22);
 }
 
@@ -317,4 +326,268 @@ body {
 .fatal {
   padding: 40px;
   text-align: center;
+}
+
+/* ---------- Fase 2: abas, ações, fila, histórico, diálogo ---------- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.flash {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.2);
+  border: 1px solid var(--accent);
+  font-size: 13px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolbar.sub {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.singer-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  color: var(--muted);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.btn.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.hint {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  opacity: 0.55;
+}
+
+.song-item:hover .row-actions,
+.song-item:focus-within .row-actions,
+.row-actions.always {
+  opacity: 1;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--accent-2);
+}
+
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icon-btn.on {
+  color: #ffd166;
+}
+
+.issues {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.issues ul {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-left: 18px;
+}
+
+.queue-list,
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.queue-item,
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.queue-item:hover,
+.history-item:hover {
+  background: var(--panel-2);
+}
+
+.queue-item.playing {
+  background: rgba(124, 92, 255, 0.22);
+}
+
+.queue-item .pos {
+  width: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.who {
+  flex: 1;
+  min-width: 0;
+}
+
+.who .singer {
+  font-weight: 600;
+}
+
+.history-item .who .singer,
+.who .artist {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.who .song {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item .when {
+  color: var(--muted);
+  font-size: 12px;
+  width: 92px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.badge.playing {
+  background: var(--accent);
+  color: #fff;
+}
+
+.np-singer {
+  color: var(--accent-2);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modal {
+  width: min(440px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.modal h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
 }

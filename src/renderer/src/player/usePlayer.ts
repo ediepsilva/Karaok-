@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, type RefObject } from 'react'
-import { mediaUrl, type Song } from '@shared/types'
+import { mediaUrl, type PlayableSong } from '@shared/types'
 import { CdgCanvasRenderer } from '../cdg/cdg-canvas'
 import { CdgDecoder } from '../cdg/cdg-decoder'
 import { clampVolume, initialPlayerState, playerReducer, type PlayerState } from './player-state'
@@ -17,9 +17,14 @@ function readStoredVolume(): number {
   }
 }
 
+export interface PlayerOptions {
+  /** Chamado quando a música termina sozinha (não ao clicar Stop). */
+  onEnded?: () => void
+}
+
 export interface PlayerControls {
   state: PlayerState
-  load(song: Song): Promise<void>
+  load(song: PlayableSong): Promise<void>
   play(): void
   pause(): void
   stop(): void
@@ -33,7 +38,8 @@ export interface PlayerControls {
  */
 export function usePlayer(
   audioRef: RefObject<HTMLAudioElement | null>,
-  canvasRef: RefObject<HTMLCanvasElement | null>
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  options: PlayerOptions = {}
 ): PlayerControls {
   const [state, dispatch] = useReducer(playerReducer, undefined, () =>
     initialPlayerState(readStoredVolume())
@@ -44,6 +50,12 @@ export function usePlayer(
   const playCounted = useRef(false)
   const lastTick = useRef(-1)
   const songIdRef = useRef<number | null>(null)
+  const singerRef = useRef('')
+  const onEndedRef = useRef(options.onEnded)
+
+  useEffect(() => {
+    onEndedRef.current = options.onEnded
+  })
 
   useEffect(() => {
     const audio = audioRef.current
@@ -57,7 +69,7 @@ export function usePlayer(
       dispatch({ type: 'playing' })
       if (!playCounted.current && songIdRef.current !== null) {
         playCounted.current = true
-        void window.api.songs.markPlayed(songIdRef.current)
+        void window.api.songs.markPlayed(songIdRef.current, singerRef.current)
       }
     }
     const onPause = (): void => dispatch({ type: 'pause' })
@@ -66,6 +78,7 @@ export function usePlayer(
       audio.pause() // sem isso, voltar ao início após o fim religa a reprodução
       audio.currentTime = 0
       decoderRef.current?.seekTo(0)
+      onEndedRef.current?.()
     }
     const onDuration = (): void => dispatch({ type: 'duration', duration: audio.duration })
     const onError = (): void => {
@@ -110,7 +123,7 @@ export function usePlayer(
   }, [audioRef, canvasRef])
 
   const load = useCallback(
-    async (song: Song): Promise<void> => {
+    async (song: PlayableSong): Promise<void> => {
       const audio = audioRef.current
       if (!audio) return
       const token = ++loadToken.current
@@ -120,6 +133,7 @@ export function usePlayer(
       rendererRef.current?.clear()
       playCounted.current = false
       songIdRef.current = song.id
+      singerRef.current = song.singer ?? ''
       dispatch({ type: 'load', songId: song.id, duration: song.duration })
 
       const check = await window.api.songs.checkFiles(song.id)

@@ -1,16 +1,28 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
-import type { Song } from '@shared/types'
+import type { PlayableSong } from '@shared/types'
 import { formatTime } from '../format'
 import type { PlayerControls } from '../player/usePlayer'
 
 interface Props {
-  song: Song | null
+  song: PlayableSong | null
+  /** Cantor da vez, quando a música veio da fila. */
+  singer: string
+  onNext(): void
+  hasNext: boolean
   player: PlayerControls
   audioRef: RefObject<HTMLAudioElement | null>
   canvasRef: RefObject<HTMLCanvasElement | null>
 }
 
-export function PlayerPanel({ song, player, audioRef, canvasRef }: Props): React.JSX.Element {
+export function PlayerPanel({
+  song,
+  singer,
+  onNext,
+  hasNext,
+  player,
+  audioRef,
+  canvasRef
+}: Props): React.JSX.Element {
   const { state } = player
   const stageRef = useRef<HTMLDivElement>(null)
   const [fullscreen, setFullscreen] = useState(false)
@@ -46,6 +58,7 @@ export function PlayerPanel({ song, player, audioRef, canvasRef }: Props): React
         </div>
         <div className="np-artist" data-testid="np-artist">
           {song ? song.artist || 'Artista desconhecido' : 'Escolha uma música na biblioteca'}
+          {song && singer && <span className="np-singer"> · Cantor: {singer}</span>}
         </div>
       </div>
 
@@ -99,6 +112,15 @@ export function PlayerPanel({ song, player, audioRef, canvasRef }: Props): React
         </button>
         <button className="btn" onClick={player.stop} disabled={!canStop} data-testid="btn-stop">
           ⏹ Stop
+        </button>
+        <button
+          className="btn"
+          onClick={onNext}
+          disabled={!hasNext}
+          title={hasNext ? 'Ir para a próxima da fila' : 'A fila não tem próxima música'}
+          data-testid="btn-next"
+        >
+          ⏭ Próxima
         </button>
         <label className="volume">
           Volume
