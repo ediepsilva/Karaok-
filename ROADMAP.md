@@ -2,7 +2,7 @@
 
 Cada fase reaproveita o mesmo projeto; nada é recriado do zero.
 
-## Fase 1 — Fundação + Player MP3+G (esta)
+## Fase 1 — Fundação + Player MP3+G (concluída)
 
 - Electron + React + TypeScript, SQLite com migrações, logs, tratamento de erros.
 - Importação de pasta (recursiva) de pares `.mp3` + `.cdg`, sem duplicados.
@@ -10,11 +10,13 @@ Cada fase reaproveita o mesmo projeto; nada é recriado do zero.
 - Player MP3 + decodificador CD+G próprio, sincronizado pelo relógio do áudio.
 - Play / Pause / Stop / Volume / Seek / Tela cheia.
 
-## Fase 2 — Biblioteca avançada + Fila
+## Fase 2 — Biblioteca avançada + Fila (concluída)
 
-ZIP MP3+G, importação avançada, edição de metadados (gênero, idioma, código), fila de cantores
-(nome, música, posição, status), favoritos, histórico. As colunas `genre`, `language`,
-`last_played` e `play_count` já existem no banco.
+- ZIP MP3+G (leitor próprio, em memória, com limites), pastas lembradas e reescaneamento, limpeza de músicas indisponíveis.
+- Edição de metadados (título, artista, gênero, idioma, código); busca por gênero e código.
+- Favoritos e histórico (música + cantor).
+- Fila de cantores com nome, ordem, status (aguardando/tocando) e avanço automático; persiste ao reabrir.
+- Banco na versão 2 (migração preserva os dados da Fase 1).
 
 ## Fase 3 — Câmera
 

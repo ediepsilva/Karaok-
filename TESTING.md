@@ -19,12 +19,12 @@ $env:E2E_EXE = "$PWD\release\win-unpacked\Karaoke Studio.exe"; node scripts/e2e.
 `npm test` cobre: parser de nomes, scanner (subpastas, pares, órfãos, arquivos inválidos), banco
 (criação, migrações, duplicados, busca, persistência, corrupção), serviço de biblioteca,
 decodificador CD+G (memory/border preset, tile block, XOR, scroll, paleta, transparência,
-sincronismo por tempo, seek), estados do player e logger.
+sincronismo por tempo, seek), estados do player e logger. Na Fase 2: leitor de ZIP (CRC, zip bomb, truncado, entradas perigosas), scanner e mídia de ZIP, migração 1→2, favoritos, edição e validação de metadados, busca por gênero/código, reescaneamento, limpeza de indisponíveis, fila (ordem, mover, status, persistência) e histórico.
 
 `npm run e2e` (`scripts/e2e.mjs`) usa perfil e biblioteca temporários e verifica: inicialização,
 criação do SQLite, importação pela interface, busca, reprodução, sincronismo CDG × áudio (cor de
 um pixel por segundo), Pause/Continue/Stop/Seek/Volume, tela cheia, MP3 corrompido, CDG inválido,
-arquivos removidos, persistência após fechar/abrir e logs.
+arquivos removidos, ZIP (tocar, CDG, seek), edição/busca por gênero e código, favoritos, fila (ordem, reordenar, avanço automático, Próxima, remover), histórico, Reescanear/Limpar indisponíveis, persistência após fechar/abrir e logs.
 
 **Limite:** nenhum script consegue confirmar que o áudio é _audível_ nem que a imagem está
 _bonita_. Isso é o checklist manual abaixo.

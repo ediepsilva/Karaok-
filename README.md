@@ -1,7 +1,7 @@
 # Karaoke Studio
 
-Aplicativo de karaokê para Windows que toca músicas **MP3+G** (`.mp3` + `.cdg`). Esta é a
-**Fase 1**: fundação e player. Veja [ROADMAP.md](ROADMAP.md) para as próximas fases e
+Aplicativo de karaokê para Windows que toca músicas **MP3+G** (`.mp3` + `.cdg`). Estado atual:
+**Fases 1 e 2** (fundação, player, biblioteca avançada com ZIP/metadados/favoritos e fila de cantores). Veja [ROADMAP.md](ROADMAP.md) para as próximas fases e
 [TESTING.md](TESTING.md) para os testes.
 
 ## Tecnologias
@@ -34,6 +34,15 @@ npm run dist       # gera o app em release/win-unpacked/
 3. Artista e título vêm do nome do arquivo (`Artista - Título`, com código de catálogo inicial
    descartado). Se não der para interpretar, o nome do arquivo vira o título.
 4. Pesquise por título ou artista (sem distinguir acentos/caixa) e clique numa música para tocar.
+
+## Biblioteca avançada (Fase 2)
+
+- **ZIP MP3+G**: a importação reconhece arquivos `.zip` que contenham `nome.mp3` + `nome.cdg` (até em subpasta interna). Nada é extraído para o disco; os nomes das entradas são validados e o tamanho é limitado.
+- **Pastas lembradas** e **Reescanear pastas**: traz só as músicas novas, sem duplicar. Pastas que sumiram são informadas.
+- **Editar** (✎): título, artista, gênero, idioma e código. A busca cobre título, artista, gênero e código.
+- **Favoritos** (★) com filtro “Só favoritas”.
+- **Fila**: informe o **nome do cantor**, use ＋ na música; reordene com ↑ ↓, remova ou toque na hora. Ao fim de uma música, a próxima da fila toca sozinha; **Próxima** pula. A fila persiste ao fechar o app.
+- **Histórico**: cada execução guarda música e cantor; dá para tocar de novo ou reenfileirar.
 
 ## Arquitetura
 
@@ -73,7 +82,9 @@ arquivo estiver corrompido, é movido para `karaoke.db.corrupt-<data>` e um banc
 
 - A duração exibida antes de tocar é estimada pelo tamanho do CDG; passa a ser a real do MP3
   quando o áudio carrega.
-- Sem ZIP, edição de metadados, fila e favoritos (Fase 2).
+- ZIP: um arquivo .zip vale uma música (o primeiro par MP3+CDG de mesmo nome dentro dele). Não há suporte a ZIP64, senha ou mais de uma música por ZIP. A entrada é descompactada em memória (limite de 200 MB por entrada).
+- Fila: interrompida com Stop, o item continua marcado como "Tocando" até você iniciar outro ou reabrir o app.
+- "Limpar indisponíveis" apaga do catálogo tudo cujo arquivo não for encontrado; se um HD externo estiver desconectado, as músicas dele também saem (a fila delas cai junto; o histórico é mantido). Há confirmação antes.
 - CD+G: implementados os comandos usados na prática (presets, tile block/XOR, scroll, paleta,
   transparência). Efeitos raros de emuladores (canais R-W/subcódigo extra) não são tratados.
 - Sem monitor secundário ainda; só tela cheia da área do CDG.
