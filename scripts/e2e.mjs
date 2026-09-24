@@ -68,7 +68,10 @@ const { ELECTRON_RUN_AS_NODE: _ignored, ...cleanEnv } = process.env
 async function launch() {
   const app = await electron.launch({
     // E2E_EXE=caminho do .exe testa o app empacotado; sem ele, testa out/ via Electron do projeto.
-    ...(process.env.E2E_EXE ? { executablePath: process.env.E2E_EXE, args: [] } : { args: [root] }),
+    ...(process.env.E2E_EXE ? { executablePath: process.env.E2E_EXE } : {}),
+    // A câmera virtual do Chromium substitui a webcam; SEM a flag que pula o pedido de permissão,
+    // para exercitar a política de permissões do app.
+    args: [...(process.env.E2E_EXE ? [] : [root]), '--use-fake-device-for-media-stream'],
     env: { ...cleanEnv, KARAOKE_USER_DATA: userData, ELECTRON_RENDERER_URL: '' }
   })
   const page = await app.firstWindow()
@@ -512,6 +515,271 @@ try {
   await page.click('[data-testid="tab-library"]')
   await page.fill('[data-testid="singer-input"]', '')
 
+  // ---------- Fase 3: câmera do cantor (câmera virtual do Chromium) ----------
+  const camBtn = '[data-testid="btn-camera"]'
+  const camOn = () => page.getAttribute(camBtn, 'aria-pressed')
+  const camInfo = () =>
+    page.evaluate(() => {
+      const v = document.querySelector('[data-testid="camera-video"]')
+      const stage = document.querySelector('[data-testid="stage"]')
+      const canvas = document.querySelector('[data-testid="cdg-canvas"]')
+      const r = (el) => {
+        const b = el.getBoundingClientRect()
+        return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }
+      }
+      return {
+        w: v.videoWidth,
+        t: v.currentTime,
+        paused: v.paused,
+        hasStream: !!v.srcObject,
+        transform: getComputedStyle(v).transform,
+        display: getComputedStyle(v).display,
+        video: r(v),
+        stage: r(stage),
+        canvas: r(canvas)
+      }
+    })
+  const camFrameColors = () =>
+    page.evaluate(() => {
+      const v = document.querySelector('[data-testid="camera-video"]')
+      const c = document.createElement('canvas')
+      c.width = 64
+      c.height = 36
+      const ctx = c.getContext('2d')
+      ctx.drawImage(v, 0, 0, 64, 36)
+      const d = ctx.getImageData(0, 0, 64, 36).data
+      const colors = new Set()
+      for (let i = 0; i < d.length; i += 4)
+        colors.add(`${d[i] >> 4},${d[i + 1] >> 4},${d[i + 2] >> 4}`)
+      return colors.size
+    })
+
+  await clickSong(page, 'Tom de Teste')
+  await waitStatus(page, 'playing')
+  await sleep(600)
+  check(
+    '53. câmera nunca liga sozinha (padrão “Ligar ao tocar” desligado)',
+    (await camOn()) === 'false' && (await page.$('[data-testid="camera-error"]')) === null
+  )
+  check(
+    '54. câmeras listadas para escolha',
+    (await page.$$eval('[data-testid="camera-device"] option', (o) => o.length)) >= 1 &&
+      !(await page.isDisabled('[data-testid="camera-device"]'))
+  )
+
+  await page.click(camBtn)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'true',
+    null,
+    { timeout: 10000 }
+  )
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="camera-video"]')?.videoWidth > 0,
+    null,
+    { timeout: 10000 }
+  )
+  const c1 = await camInfo()
+  await sleep(700)
+  const c2 = await camInfo()
+  check(
+    '55. câmera liga com permissão só de vídeo e exibe imagem ao vivo',
+    c1.w > 0 && !c2.paused && c2.t > c1.t && c2.hasStream,
+    `${c1.w}px t=${c2.t.toFixed(2)}`
+  )
+  check('56. imagem da câmera tem conteúdo (não é quadro vazio)', (await camFrameColors()) > 3)
+  const label = await page.$eval(
+    '[data-testid="camera-device"]',
+    (s) => s.options[s.selectedIndex]?.textContent ?? ''
+  )
+  check(
+    '57. nome real da câmera aparece depois da permissão',
+    label.length > 0 && !/^Câmera \d+$/.test(label),
+    label
+  )
+  const camSync = await syncSamples(page, 5)
+  check(
+    '58. CDG segue sincronizado com a câmera ligada',
+    camSync.usable >= 2 && camSync.good === camSync.usable,
+    `${camSync.good}/${camSync.usable}`
+  )
+
+  const pip = await camInfo()
+  check(
+    '59. posição “sobre o canto”: câmera pequena sobre o CDG',
+    pip.video.w < pip.stage.w * 0.4 &&
+      pip.video.l > pip.canvas.l &&
+      pip.video.r <= pip.stage.r + 1 &&
+      pip.video.b <= pip.stage.b + 1,
+    `${Math.round(pip.video.w)}x${Math.round(pip.video.h)} em ${Math.round(pip.stage.w)}px`
+  )
+  await page.selectOption('[data-testid="camera-layout"]', 'side')
+  await sleep(300)
+  const side = await camInfo()
+  check(
+    '60. posição “ao lado”: câmera e CDG não se sobrepõem',
+    side.video.l >= side.canvas.r - 2 &&
+      side.video.w > side.stage.w * 0.25 &&
+      side.display === 'block',
+    `video.l=${Math.round(side.video.l)} canvas.r=${Math.round(side.canvas.r)}`
+  )
+  const sideSync = await syncSamples(page, 3)
+  check(
+    '61. CDG continua correto no modo lado a lado',
+    sideSync.good === sideSync.usable && sideSync.usable >= 1,
+    `${sideSync.good}/${sideSync.usable}`
+  )
+  await page.selectOption('[data-testid="camera-layout"]', 'pip')
+
+  check(
+    '62. espelhar: ligado por padrão e alternável',
+    (await camInfo()).transform.startsWith('matrix(-1') &&
+      (await page.uncheck('[data-testid="camera-mirror"]'),
+      await sleep(100),
+      (await camInfo()).transform === 'none')
+  )
+  await page.check('[data-testid="camera-mirror"]')
+
+  await page.click('[data-testid="btn-fullscreen"]')
+  await page
+    .waitForFunction(() => document.fullscreenElement !== null, null, { timeout: 5000 })
+    .catch(() => {})
+  const fsCam = await page.evaluate(() => {
+    const v = document.querySelector('[data-testid="camera-video"]')
+    const b = v.getBoundingClientRect()
+    return {
+      inside: document.fullscreenElement?.contains(v) ?? false,
+      visible: b.width > 50 && b.height > 30
+    }
+  })
+  await page.evaluate(() => document.exitFullscreen())
+  await page.waitForFunction(() => document.fullscreenElement === null)
+  check(
+    '63. em tela cheia a câmera continua junto do CDG',
+    fsCam.inside && fsCam.visible,
+    JSON.stringify(fsCam)
+  )
+
+  await clickSong(page, 'Segunda Musica')
+  await waitStatus(page, 'playing')
+  await sleep(600)
+  const c3 = await camInfo()
+  await sleep(500)
+  const c4 = await camInfo()
+  check('64. trocar de música não derruba a câmera', (await camOn()) === 'true' && c4.t > c3.t)
+
+  check(
+    '65. microfone segue bloqueado (só vídeo é liberado)',
+    await page.evaluate(() =>
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(
+        () => false,
+        (e) => e.name === 'NotAllowedError'
+      )
+    )
+  )
+
+  await page.evaluate(() => {
+    window.__camTrack = document
+      .querySelector('[data-testid="camera-video"]')
+      .srcObject.getVideoTracks()[0]
+  })
+  await page.click(camBtn)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'false'
+  )
+  const off = await page.evaluate(() => ({
+    src: document.querySelector('[data-testid="camera-video"]').srcObject,
+    track: window.__camTrack.readyState
+  }))
+  check(
+    '66. desligar libera a câmera de verdade (luz apaga)',
+    off.src === null && off.track === 'ended'
+  )
+
+  await page.check('[data-testid="camera-auto"]')
+  await sleep(1200)
+  check(
+    '67a. marcar “Ligar ao tocar” com música tocando não liga na hora (vale da próxima)',
+    (await camOn()) === 'false'
+  )
+  await clickSong(page, 'Tom de Teste')
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'true',
+    null,
+    { timeout: 10000 }
+  )
+  check('67. “Ligar ao tocar” liga a câmera quando a música começa', true)
+  await page.click(camBtn)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'false'
+  )
+  await sleep(1500)
+  check('68. desligada à mão, não religa sozinha na mesma música', (await camOn()) === 'false')
+  await page.uncheck('[data-testid="camera-auto"]')
+
+  // Câmera escolhida que sumiu: cai para a padrão com aviso (preferência inválida guardada)
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'karaoke.camera',
+      JSON.stringify({
+        deviceId: 'camera-que-nao-existe',
+        layout: 'pip',
+        mirror: true,
+        autoStart: false
+      })
+    )
+  )
+  await page.reload()
+  await page.waitForSelector('[data-testid="song-list"]')
+  await page.click(camBtn)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'true',
+    null,
+    { timeout: 10000 }
+  )
+  const notice = await page.textContent('[data-testid="camera-notice"]').catch(() => '')
+  check('69. câmera escolhida ausente: usa a padrão e avisa', /padrão/.test(notice ?? ''), notice)
+  await page.selectOption('[data-testid="camera-layout"]', 'side')
+  await page.click(camBtn)
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="btn-camera"]')?.getAttribute('aria-pressed') === 'false'
+  )
+
+  // Falha real do getUserMedia (sem câmera / sem permissão / em uso): mensagem clara, app segue vivo
+  const failWith = async (name) => {
+    await page.evaluate((n) => {
+      navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('simulado', n))
+    }, name)
+    await page.click(camBtn)
+    await page.waitForSelector('[data-testid="camera-error"]', { timeout: 8000 })
+    return page.textContent('[data-testid="camera-error"]')
+  }
+  const noCam = await failWith('NotFoundError')
+  check(
+    '72. sem câmera: mensagem clara e o botão não fica “ligado”',
+    /Nenhuma câmera encontrada/.test(noCam) && (await camOn()) === 'false',
+    noCam
+  )
+  const denied = await failWith('NotAllowedError')
+  check(
+    '73. sem permissão do Windows: mensagem orienta onde liberar',
+    /Privacidade/.test(denied),
+    denied
+  )
+  const busy = await failWith('NotReadableError')
+  check('74. câmera em uso por outro programa: mensagem clara', /em uso/.test(busy), busy)
+  check(
+    '75. falha da câmera não afeta a música (player continua funcional)',
+    (await status(page)) !== 'error' && (await page.$('[data-testid="player-error"]')) === null
+  )
+  await page.reload()
+  await page.waitForSelector('[data-testid="song-list"]')
+
   // ---------- Erros ----------
   await clickSong(page, 'Mp3 Corrompido')
   await page.waitForSelector('[data-testid="player-error"]', { timeout: 8000 })
@@ -619,6 +887,11 @@ try {
     { timeout: 8000 }
   )
   check('50. após reabrir, favorito e metadados editados continuam', true)
+  check(
+    '70. após reabrir, a posição da câmera continua e ela NÃO liga sozinha',
+    (await page.inputValue('[data-testid="camera-layout"]')) === 'side' &&
+      (await page.getAttribute('[data-testid="btn-camera"]', 'aria-pressed')) === 'false'
+  )
   await app.close()
 
   const db = new DatabaseSync(dbPath, { readOnly: true })
@@ -641,6 +914,10 @@ try {
       /\[ERROR\] Falha de reprodução de áudio/.test(log) &&
       /\[ERROR\] Falha ao carregar CDG/.test(log) &&
       /Arquivo da música não está mais disponível/.test(log)
+  )
+  check(
+    '71. log registra a câmera ligada e a permissão de microfone negada',
+    /Câmera ligada/.test(log) && /Permissão negada/.test(log)
   )
 } catch (error) {
   failed++
