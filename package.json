@@ -1,0 +1,54 @@
+{
+  "name": "karaoke-studio",
+  "productName": "Karaoke Studio",
+  "version": "0.1.0",
+  "description": "Aplicativo de karaokê MP3+G (Fase 1: fundação + player)",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./out/main/index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "electron-vite build",
+    "dist": "npm run build && electron-builder --win --dir",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fixtures": "tsx scripts/generate-fixtures.ts",
+    "e2e": "npm run build && node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "playwright-core": "^1.63.0",
+    "prettier": "^3.9.9",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.1"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}

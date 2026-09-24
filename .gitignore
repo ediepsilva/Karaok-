@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+.vite/
+coverage/
+# manual test media (legal samples placed by the user, never committed)
+test-assets/manual/*
+!test-assets/manual/README.md
