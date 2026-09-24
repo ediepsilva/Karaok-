@@ -1,10 +1,9 @@
-import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { protocol } from 'electron'
 import { MEDIA_SCHEME } from '@shared/types'
 import type { SongRepository } from './db/song-repository'
 import type { Logger } from './logger'
+import { openMedia, ZipEntryCache, type MediaKind, type MediaSource } from './library/media-source'
 
 /** Deve ser chamado antes de `app.whenReady()`. */
 export function registerMediaScheme(): void {
@@ -55,9 +54,11 @@ const CONTENT_TYPES = { mp3: 'audio/mpeg', cdg: 'application/octet-stream' } as 
 /**
  * Serve `karaoke-media://song/<id>/mp3|cdg` com suporte a Range (necessário para seek no
  * `<audio>`). O renderer nunca informa caminhos: só o id de uma música cadastrada, o que impede a
- * leitura de arquivos arbitrários do disco.
+ * leitura de arquivos arbitrários do disco. Músicas em ZIP são descompactadas em memória.
  */
 export function handleMediaProtocol(repo: SongRepository, logger: Logger): void {
+  const zipCache = new ZipEntryCache()
+
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const url = new URL(request.url)
     const match = /^\/(\d+)\/(mp3|cdg)$/.exec(url.pathname)
@@ -65,20 +66,19 @@ export function handleMediaProtocol(repo: SongRepository, logger: Logger): void 
       return new Response('Requisição inválida', { status: 400 })
     }
 
-    const song = repo.getById(Number(match[1]))
-    if (!song) return new Response('Música não encontrada', { status: 404 })
-    const kind = match[2] as 'mp3' | 'cdg'
-    const path = kind === 'mp3' ? song.mp3Path : song.cdgPath
+    const id = Number(match[1])
+    const location = repo.getLocation(id)
+    if (!location) return new Response('Música não encontrada', { status: 404 })
+    const kind = match[2] as MediaKind
 
-    let size: number
+    let media: MediaSource
     try {
-      const info = await stat(path)
-      if (!info.isFile()) throw new Error('não é arquivo')
-      size = info.size
-    } catch {
-      logger.warn('Arquivo de mídia indisponível', { id: song.id, path })
+      media = await openMedia(location, kind, zipCache)
+    } catch (error) {
+      logger.warn('Arquivo de mídia indisponível', { id, kind, error })
       return new Response('Arquivo indisponível', { status: 404 })
     }
+    const size = media.size
 
     // O renderer roda em file://, origem distinta: o fetch do CDG exige cabeçalhos CORS.
     const headers: Record<string, string> = {
@@ -103,8 +103,9 @@ export function handleMediaProtocol(repo: SongRepository, logger: Logger): void 
 
     if (request.method === 'HEAD' || length === 0) return new Response(null, { status, headers })
 
-    const stream = createReadStream(path, { start, end })
-    stream.on('error', (error) => logger.warn('Erro ao ler mídia', { id: song.id, path, error }))
-    return new Response(Readable.toWeb(stream) as ReadableStream, { status, headers })
+    const data = media.read(start, end)
+    if (Buffer.isBuffer(data)) return new Response(new Uint8Array(data), { status, headers })
+    data.on('error', (error) => logger.warn('Erro ao ler mídia', { id, kind, error }))
+    return new Response(Readable.toWeb(data) as ReadableStream, { status, headers })
   })
 }

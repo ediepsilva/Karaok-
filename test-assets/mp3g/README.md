@@ -23,3 +23,8 @@ manual do player. Não é música de verdade: para testar com MP3+G real, veja `
 | `Subpasta/Outro Artista - Segunda Musica.mp3/.cdg` | par válido em subpasta, 6 s |
 | `Sem Letra - So Audio.mp3`              | MP3 sem CDG (deve ser ignorado)    |
 | `Sem Audio - So Grafico.cdg`            | CDG sem MP3 (deve ser ignorado)    |
+
+## Fixture ZIP (Fase 2)
+
+`test-assets/mp3g-zip/Zip Artista - Musica Zipada.zip`: MP3 + CDG sintéticos de 8 s, gerados por
+`npm run fixtures` (mesma origem e licença acima). Um ZIP = uma música.

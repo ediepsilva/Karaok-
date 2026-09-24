@@ -6,6 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildFixtureCdg, buildFixtureMp3 } from './lib/fixture-media'
+import { buildZip } from './lib/zip-builder'
 
 const root = join(process.cwd(), 'test-assets', 'mp3g')
 mkdirSync(join(root, 'Subpasta'), { recursive: true })
@@ -22,3 +23,13 @@ write(join('Subpasta', 'Outro Artista - Segunda Musica.cdg'), buildFixtureCdg(6)
 // Órfãos: exercitam o tratamento de MP3 sem CDG e CDG sem MP3.
 write('Sem Letra - So Audio.mp3', buildFixtureMp3(2))
 write('Sem Audio - So Grafico.cdg', buildFixtureCdg(2))
+
+// MP3+G compactado (Fase 2): um ZIP = uma música.
+const zipDir = join(process.cwd(), 'test-assets', 'mp3g-zip')
+mkdirSync(zipDir, { recursive: true })
+const zip = buildZip([
+  { name: 'Musica Zipada.mp3', data: buildFixtureMp3(8) },
+  { name: 'Musica Zipada.cdg', data: buildFixtureCdg(8) }
+])
+writeFileSync(join(zipDir, 'Zip Artista - Musica Zipada.zip'), zip)
+console.log(`mp3g-zip/Zip Artista - Musica Zipada.zip (${zip.length} bytes)`)
