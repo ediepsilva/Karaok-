@@ -10,6 +10,12 @@ npm test            # Vitest: testes unitários e de integração (SQLite e disc
 npm run e2e         # build + abre o Electron de verdade e usa a interface
 ```
 
+Para rodar o mesmo teste ponta a ponta no app empacotado (depois de `npm run dist`), no PowerShell:
+
+```powershell
+$env:E2E_EXE = "$PWD\release\win-unpacked\Karaoke Studio.exe"; node scripts/e2e.mjs
+```
+
 `npm test` cobre: parser de nomes, scanner (subpastas, pares, órfãos, arquivos inválidos), banco
 (criação, migrações, duplicados, busca, persistência, corrupção), serviço de biblioteca,
 decodificador CD+G (memory/border preset, tile block, XOR, scroll, paleta, transparência,

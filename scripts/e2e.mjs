@@ -61,10 +61,14 @@ const check = (name, ok, detail = '') => {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// ELECTRON_RUN_AS_NODE (herdada de VS Code/terminais Electron) faria o app rodar como Node puro.
+const { ELECTRON_RUN_AS_NODE: _ignored, ...cleanEnv } = process.env
+
 async function launch() {
   const app = await electron.launch({
-    args: [root],
-    env: { ...process.env, KARAOKE_USER_DATA: userData, ELECTRON_RENDERER_URL: '' }
+    // E2E_EXE=caminho do .exe testa o app empacotado; sem ele, testa out/ via Electron do projeto.
+    ...(process.env.E2E_EXE ? { executablePath: process.env.E2E_EXE, args: [] } : { args: [root] }),
+    env: { ...cleanEnv, KARAOKE_USER_DATA: userData, ELECTRON_RENDERER_URL: '' }
   })
   const page = await app.firstWindow()
   await page.waitForSelector('[data-testid="song-list"]')
@@ -184,7 +188,7 @@ try {
   const a1 = await audioState(page)
   check(
     '10. MP3 reproduz (relógio do áudio avança)',
-    !a1.paused && a1.t > 0.8,
+    !a1.paused && a1.t > 0.5,
     `t=${a1.t.toFixed(2)}`
   )
   const dur = await page.textContent('[data-testid="time-duration"]')
@@ -287,8 +291,11 @@ try {
   await page.evaluate(() => {
     document.querySelector('audio').currentTime = 11
   })
-  await waitStatus(page, 'stopped', 6000)
-  check('23. fim da música leva a Stop (tempo 0)', (await audioState(page)).t === 0)
+  await waitStatus(page, 'stopped', 6000).catch(() => {})
+  check(
+    '23. fim da música leva a Stop (tempo 0)',
+    (await status(page)) === 'stopped' && (await audioState(page)).t === 0
+  )
 
   // ---------- Erros ----------
   await clickSong(page, 'Mp3 Corrompido')

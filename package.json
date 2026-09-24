@@ -50,5 +50,21 @@
   "allowScripts": {
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true
+  },
+  "build": {
+    "appId": "com.karaokestudio.app",
+    "productName": "Karaoke Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": "dir"
+    },
+    "npmRebuild": false
   }
 }

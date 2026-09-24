@@ -42,15 +42,36 @@ export class CdgFormatError extends Error {
   }
 }
 
-/** Valida o conteúdo de um arquivo CDG e devolve a quantidade de pacotes completos. */
+const KNOWN_INSTRUCTIONS: ReadonlySet<number> = new Set([
+  Instruction.MemoryPreset,
+  Instruction.BorderPreset,
+  Instruction.TileBlock,
+  Instruction.ScrollPreset,
+  Instruction.ScrollCopy,
+  Instruction.DefineTransparent,
+  Instruction.LoadColorsLow,
+  Instruction.LoadColorsHigh,
+  Instruction.TileBlockXor
+])
+
+/**
+ * Valida o conteúdo de um arquivo CDG e devolve a quantidade de pacotes completos. Exige ao menos
+ * um pacote CD+G com instrução conhecida e que estes superem os de instrução desconhecida
+ * (um texto qualquer pode acertar o byte de comando por acaso, mas não as instruções).
+ */
 export function validateCdg(data: Uint8Array): number {
   const total = Math.floor(data.length / PACKET_SIZE)
   if (total === 0) throw new CdgFormatError('Arquivo CDG vazio ou truncado.')
-  let valid = 0
+  let known = 0
+  let unknown = 0
   for (let i = 0; i < total; i++) {
-    if (((data[i * PACKET_SIZE] ?? 0) & 0x3f) === CDG_COMMAND) valid++
+    const offset = i * PACKET_SIZE
+    if (((data[offset] ?? 0) & 0x3f) !== CDG_COMMAND) continue
+    if (KNOWN_INSTRUCTIONS.has((data[offset + 1] ?? 0) & 0x3f)) known++
+    else unknown++
   }
-  if (valid === 0) throw new CdgFormatError('Arquivo não contém pacotes CD+G.')
+  if (known === 0 || unknown > known)
+    throw new CdgFormatError('Arquivo não contém dados CD+G válidos.')
   return total
 }
 

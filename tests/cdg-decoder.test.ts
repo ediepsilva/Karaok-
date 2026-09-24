@@ -25,6 +25,14 @@ describe('validação', () => {
     )
   })
 
+  it('rejeita texto cujo primeiro byte coincide com o comando CD+G', () => {
+    // 'I' (0x49) & 0x3F === 9, mas a instrução seguinte não é conhecida
+    const text = Buffer.from(
+      'Isto nao e um arquivo CDG, apenas texto para testar o tratamento de erro.'
+    )
+    expect(() => validateCdg(text)).toThrow(CdgFormatError)
+  })
+
   it('aceita arquivo com ao menos um pacote CD+G', () => {
     expect(validateCdg(new CdgBuilder().memoryPreset(1).toBuffer())).toBe(1)
   })

@@ -63,6 +63,7 @@ export function usePlayer(
     const onPause = (): void => dispatch({ type: 'pause' })
     const onEnded = (): void => {
       dispatch({ type: 'ended' })
+      audio.pause() // sem isso, voltar ao início após o fim religa a reprodução
       audio.currentTime = 0
       decoderRef.current?.seekTo(0)
     }
