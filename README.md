@@ -57,7 +57,7 @@ tests/          testes Vitest
 
 ## Banco de dados
 
-SQLite em `%APPDATA%\karaoke-studio\karaoke.db`, criado automaticamente, com migrações versionadas
+SQLite em `%APPDATA%\Karaoke Studio\karaoke.db`, criado automaticamente, com migrações versionadas
 (`PRAGMA user_version`) em `src/main/db/migrations.ts`. Tabelas: `songs` (id, title, artist,
 genre, language, mp3_path, cdg_path, duration, date_added, last_played, play_count e colunas
 normalizadas para busca) e `settings`. Índice único no caminho do MP3 evita duplicados. Se o
@@ -65,7 +65,7 @@ arquivo estiver corrompido, é movido para `karaoke.db.corrupt-<data>` e um banc
 
 ## Logs
 
-`%APPDATA%\karaoke-studio\logs\karaoke-AAAA-MM-DD.log`, uma linha por evento:
+`%APPDATA%\Karaoke Studio\logs\karaoke-AAAA-MM-DD.log`, uma linha por evento:
 `data-hora [NÍVEL] mensagem {contexto}`. Registram inicialização, versão, banco, importação
 (encontradas/duplicadas/ignoradas), problemas de MP3/CDG, falhas de reprodução e de banco.
 
