@@ -62,7 +62,8 @@ const check = (name, ok, detail = '') => {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// ELECTRON_RUN_AS_NODE (herdada de VS Code/terminais Electron) faria o app rodar como Node puro.
+// Se ELECTRON_RUN_AS_NODE estiver no ambiente (ocorreu em ferramentas iniciadas por extensões do
+// VS Code), o Electron roda como Node puro e o app não abre; por isso a variável é removida.
 const { ELECTRON_RUN_AS_NODE: _ignored, ...cleanEnv } = process.env
 
 async function launch() {

@@ -1,0 +1,15 @@
+{
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/out/**": true,
+    "**/release/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/out": true,
+    "**/release": true
+  },
+  "terminal.integrated.env.windows": {
+    "ELECTRON_RUN_AS_NODE": null
+  }
+}
