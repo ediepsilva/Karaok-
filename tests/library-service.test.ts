@@ -2,6 +2,7 @@ import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { openDatabase } from '../src/main/db/database'
+import { FolderRepository } from '../src/main/db/folder-repository'
 import { SongRepository } from '../src/main/db/song-repository'
 import { LibraryError, LibraryService } from '../src/main/library/library-service'
 import { FIXTURE_DIR, makeTempDir, memoryLogger, writeFile, writeSongPair } from './helpers'
@@ -9,7 +10,10 @@ import { FIXTURE_DIR, makeTempDir, memoryLogger, writeFile, writeSongPair } from
 function setup(): { service: LibraryService; logger: ReturnType<typeof memoryLogger> } {
   const logger = memoryLogger()
   const db = openDatabase(join(makeTempDir(), 'k.db'), logger)
-  return { service: new LibraryService(new SongRepository(db), logger), logger }
+  return {
+    service: new LibraryService(new SongRepository(db), new FolderRepository(db), logger),
+    logger
+  }
 }
 
 describe('LibraryService', () => {
@@ -52,8 +56,8 @@ describe('LibraryService', () => {
   it('busca por título e por artista', async () => {
     const { service } = setup()
     await service.importFolder(FIXTURE_DIR)
-    expect(service.search('tom de teste').map((s) => s.title)).toEqual(['Tom de Teste'])
-    expect(service.search('outro artista').map((s) => s.title)).toEqual(['Segunda Musica'])
+    expect(service.list({ query: 'tom de teste' }).map((s) => s.title)).toEqual(['Tom de Teste'])
+    expect(service.list({ query: 'outro artista' }).map((s) => s.title)).toEqual(['Segunda Musica'])
   })
 
   it('rejeita caminho relativo, inexistente ou que não é pasta', async () => {

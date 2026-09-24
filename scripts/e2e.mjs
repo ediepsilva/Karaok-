@@ -24,6 +24,7 @@ const work = mkdtempSync(join(tmpdir(), 'karaoke-e2e-'))
 const userData = join(work, 'userdata')
 const library = join(work, 'library')
 cpSync(fixtures, library, { recursive: true })
+cpSync(join(root, 'test-assets', 'mp3g-zip'), join(library, 'Zipados'), { recursive: true })
 
 // Mídias defeituosas: MP3 com cabeçalho válido mas dados corrompidos; CDG que é só texto.
 const goodMp3 = readFileSync(join(fixtures, 'Artista Teste - Tom de Teste.mp3'))
@@ -137,7 +138,7 @@ try {
   const count = await page.textContent('[data-testid="song-count"]')
   check(
     '4. importação recursiva encontra os pares MP3+CDG',
-    count.startsWith('5 '),
+    count.startsWith('6 '),
     `${count} | ${summary.trim()}`
   )
   check('5. MP3 sem CDG e CDG sem MP3 são informados', /1 MP3 sem CDG, 1 CDG sem MP3/.test(summary))
@@ -150,7 +151,7 @@ try {
   )
   check(
     '6. reimportar não duplica músicas',
-    (await page.textContent('[data-testid="song-count"]')).startsWith('5 ')
+    (await page.textContent('[data-testid="song-count"]')).startsWith('6 ')
   )
 
   await page.fill('.search', 'tom de teste')
@@ -173,7 +174,7 @@ try {
   await page.waitForSelector('.empty')
   await page.fill('.search', '')
   await page.waitForFunction(() =>
-    document.querySelector('[data-testid="song-count"]')?.textContent?.startsWith('5 ')
+    document.querySelector('[data-testid="song-count"]')?.textContent?.startsWith('6 ')
   )
 
   // ---------- Reprodução ----------
@@ -297,6 +298,220 @@ try {
     (await status(page)) === 'stopped' && (await audioState(page)).t === 0
   )
 
+  // ---------- Fase 2 ----------
+  const setRange = (selector, value) =>
+    page.evaluate(
+      ([sel, v]) => {
+        const input = document.querySelector(sel)
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+        setter.call(input, String(v))
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      },
+      [selector, value]
+    )
+  const waitCount = (testid, prefix) =>
+    page.waitForFunction(
+      ([id, p]) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.startsWith(p),
+      [testid, prefix],
+      { timeout: 8000 }
+    )
+  const npTitle = () => page.textContent('[data-testid="np-title"]')
+  const rowOf = (title) => `.song-item:has-text("${title}")`
+
+  // ZIP
+  check(
+    '30. ZIP importado aparece na biblioteca com a etiqueta ZIP',
+    (await page.textContent(`${rowOf('Musica Zipada')} .tag`)) === 'ZIP'
+  )
+  await clickSong(page, 'Musica Zipada')
+  await waitStatus(page, 'playing')
+  await sleep(800)
+  const zipAudio = await audioState(page)
+  check(
+    '31. música dentro do ZIP toca (áudio avança)',
+    !zipAudio.paused && zipAudio.t > 0.4 && Math.abs(zipAudio.duration - 8) < 0.5,
+    `t=${zipAudio.t.toFixed(2)} dur=${zipAudio.duration.toFixed(2)}`
+  )
+  const zipSync = await syncSamples(page, 4)
+  check(
+    '32. CDG do ZIP renderiza e acompanha o áudio',
+    zipSync.usable >= 2 &&
+      zipSync.good === zipSync.usable &&
+      (await page.$('[data-testid="cdg-error"]')) === null,
+    `${zipSync.good}/${zipSync.usable}`
+  )
+  await setRange('.seek', 6)
+  await sleep(500)
+  const zipSeek = await syncSamples(page, 2)
+  check(
+    '33. seek dentro do ZIP (Range em memória) funciona',
+    (await audioState(page)).t >= 6 && zipSeek.good === zipSeek.usable,
+    `${zipSeek.good}/${zipSeek.usable}`
+  )
+  await page.click('[data-testid="btn-stop"]')
+  await waitStatus(page, 'stopped')
+
+  // Metadados, busca por gênero/código e favoritos
+  await page.click(`${rowOf('Tom de Teste')} [data-testid="btn-edit"]`)
+  await page.fill('[data-testid="edit-genre"]', 'Sertanejo')
+  await page.fill('[data-testid="edit-language"]', 'Português')
+  await page.fill('[data-testid="edit-code"]', 'ZZ-77')
+  await page.click('[data-testid="edit-save"]')
+  await page.waitForSelector('[data-testid="edit-dialog"]', { state: 'detached' })
+  await page.fill('.search', 'sertanejo')
+  await waitCount('song-count', '1 ')
+  check(
+    '34. metadados editados; busca por gênero',
+    (await page.textContent('.song-row .title')).includes('Tom de Teste')
+  )
+  await page.fill('.search', 'zz-77')
+  await waitCount('song-count', '1 ')
+  check('35. busca por código', (await page.textContent('.song-row .title')).includes('ZZ-77'))
+  await page.fill('.search', '')
+  await waitCount('song-count', '6 ')
+
+  await page.click(`${rowOf('Tom de Teste')} [data-testid="btn-edit"]`)
+  await page.fill('[data-testid="edit-title"]', '   ')
+  await page.click('[data-testid="edit-save"]')
+  await page.waitForSelector('[data-testid="edit-dialog"] [role="alert"]')
+  check(
+    '36. título vazio é recusado com mensagem',
+    (await page.textContent('[data-testid="edit-dialog"] [role="alert"]')).includes('título')
+  )
+  await page.keyboard.press('Escape')
+  await page.waitForSelector('[data-testid="edit-dialog"]', { state: 'detached' })
+
+  await page.click(`${rowOf('Tom de Teste')} [data-testid="btn-favorite"]`)
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="btn-favorite"][aria-pressed="true"]')
+  )
+  await page.check('[data-testid="favorites-only"]')
+  await waitCount('song-count', '1 ')
+  check(
+    '37. favoritar e filtrar “só favoritas”',
+    (await page.textContent('.song-row .title')).includes('Tom de Teste')
+  )
+  await page.uncheck('[data-testid="favorites-only"]')
+  await waitCount('song-count', '6 ')
+
+  // Fila: nome obrigatório, ordem, reordenar
+  const enqueueBtn = (title) => `${rowOf(title)} [data-testid="btn-enqueue"]`
+  check(
+    '38. adicionar à fila exige nome do cantor',
+    await page.isDisabled(enqueueBtn('Segunda Musica'))
+  )
+  await page.fill('[data-testid="singer-input"]', 'Ana')
+  await page.click(enqueueBtn('Segunda Musica'))
+  await page.waitForSelector('[data-testid="flash"]')
+  await page.fill('[data-testid="singer-input"]', 'Bruno')
+  await page.click(enqueueBtn('Musica Zipada'))
+  await page.click('[data-testid="tab-queue"]')
+  await waitCount('queue-count', '2 ')
+  const order = () =>
+    page.$$eval('[data-testid="queue-singer"]', (els) => els.map((e) => e.textContent))
+  check(
+    '39. fila mostra cantores na ordem de entrada',
+    JSON.stringify(await order()) === '["Ana","Bruno"]',
+    JSON.stringify(await order())
+  )
+  await page.click('.queue-item:nth-child(2) [data-testid="queue-up"]')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="queue-singer"]')?.textContent === 'Bruno'
+  )
+  check('40. mover para cima reordena a fila', JSON.stringify(await order()) === '["Bruno","Ana"]')
+  await page.click('.queue-item:nth-child(1) [data-testid="queue-down"]')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="queue-singer"]')?.textContent === 'Ana'
+  )
+  check('41. mover para baixo devolve a ordem', JSON.stringify(await order()) === '["Ana","Bruno"]')
+
+  // Tocar a fila: 1º item → avança sozinho para o 2º → fim
+  await page.click('.queue-item:nth-child(1) [data-testid="queue-play"]')
+  await waitStatus(page, 'playing')
+  check(
+    '42. “Tocar agora” inicia o item e mostra o cantor',
+    (await npTitle()) === 'Segunda Musica' &&
+      (await page.textContent('.np-singer')).includes('Ana') &&
+      (await page.getAttribute('.queue-item:nth-child(1)', 'data-status')) === 'playing'
+  )
+  await setRange('.seek', 5.2)
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="np-title"]')?.textContent === 'Musica Zipada',
+    null,
+    { timeout: 8000 }
+  )
+  await waitStatus(page, 'playing')
+  await waitCount('queue-count', '1 ')
+  check(
+    '43. ao terminar, a próxima da fila toca sozinha (cantor Bruno)',
+    (await page.textContent('.np-singer')).includes('Bruno') && (await audioState(page)).t < 3
+  )
+  await setRange('.seek', 7.2)
+  await waitStatus(page, 'stopped', 8000)
+  await waitCount('queue-count', '0 ')
+  check(
+    '44. fim da última música esvazia a fila e para',
+    (await status(page)) === 'stopped' && (await page.isDisabled('[data-testid="btn-next"]'))
+  )
+
+  // Próxima (pular) e remover
+  await page.click('[data-testid="tab-library"]')
+  await page.fill('[data-testid="singer-input"]', 'Carla')
+  await page.click(enqueueBtn('Segunda Musica'))
+  await page.click(enqueueBtn('Musica Zipada'))
+  await page.click(enqueueBtn('Tom de Teste'))
+  await page.click('[data-testid="tab-queue"]')
+  await waitCount('queue-count', '3 ')
+  await page.click('.queue-item:nth-child(1) [data-testid="queue-play"]')
+  await waitStatus(page, 'playing')
+  await page.click('[data-testid="btn-next"]')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="np-title"]')?.textContent === 'Musica Zipada',
+    null,
+    { timeout: 8000 }
+  )
+  await waitCount('queue-count', '2 ')
+  const skipped = await waitStatus(page, 'playing').then(
+    () => 'playing',
+    async () => status(page)
+  )
+  check(
+    '45. “Próxima” pula para o item seguinte da fila e ele toca',
+    skipped === 'playing',
+    skipped
+  )
+  await page.click('.queue-item:nth-child(2) [data-testid="queue-remove"]')
+  await waitCount('queue-count', '1 ')
+  check(
+    '46. remover item da fila',
+    (await page.$$eval('.queue-item .song', (els) => els.map((e) => e.textContent))).every(
+      (t) => !t.includes('Tom de Teste')
+    )
+  )
+  await page.click('[data-testid="btn-stop"]')
+
+  // Histórico
+  await page.click('[data-testid="tab-history"]')
+  await page.waitForSelector('.history-item')
+  const hist = await page.$$eval('.history-item', (els) => els.map((e) => e.textContent))
+  check(
+    '47. histórico lista execuções com o cantor',
+    hist.length >= 5 &&
+      hist.some((t) => t.includes('Ana')) &&
+      hist.some((t) => t.includes('Bruno')) &&
+      hist.some((t) => t.includes('Carla')),
+    `${hist.length} entradas`
+  )
+
+  // Deixa um item na fila para testar persistência
+  await page.click('[data-testid="tab-library"]')
+  await page.fill('[data-testid="singer-input"]', 'Diego')
+  await page.click(enqueueBtn('Tom de Teste'))
+  await page.click('[data-testid="tab-queue"]')
+  await waitCount('queue-count', '2 ')
+  await page.click('[data-testid="tab-library"]')
+  await page.fill('[data-testid="singer-input"]', '')
+
   // ---------- Erros ----------
   await clickSong(page, 'Mp3 Corrompido')
   await page.waitForSelector('[data-testid="player-error"]', { timeout: 8000 })
@@ -330,6 +545,27 @@ try {
     errText
   )
 
+  // Manutenção da biblioteca pela interface
+  await page.click('[data-testid="tab-library"]')
+  page.on('dialog', (dialog) => void dialog.accept())
+  await page.click('text=Reescanear pastas')
+  await page.waitForFunction(() =>
+    /pasta\(s\) reescaneada/.test(
+      document.querySelector('[data-testid="library-notice"]')?.textContent ?? ''
+    )
+  )
+  check('51. “Reescanear pastas” funciona pela interface', true)
+  await page.click('text=Limpar indisponíveis')
+  await page.waitForFunction(() =>
+    /1 música\(s\) indisponível/.test(
+      document.querySelector('[data-testid="library-notice"]')?.textContent ?? ''
+    )
+  )
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="song-count"]')?.textContent?.startsWith('5 ')
+  )
+  check('52. “Limpar indisponíveis” remove só a música sem arquivos (6 → 5)', true)
+
   await page.screenshot({ path: join(work, 'screenshot.png') })
   await app.close()
 
@@ -341,6 +577,48 @@ try {
     { timeout: 8000 }
   )
   check('27. após reabrir, a biblioteca continua cadastrada (5 músicas)', true)
+  await page.click('[data-testid="tab-queue"]')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="queue-count"]')?.textContent?.startsWith('2 '),
+    null,
+    { timeout: 8000 }
+  )
+  const restoredQueue = await page.$$eval('.queue-item', (els) =>
+    els.map((e) => [
+      e.getAttribute('data-status'),
+      e.querySelector('[data-testid="queue-singer"]').textContent
+    ])
+  )
+  check(
+    '48. após reabrir, a fila continua (ninguém “tocando”)',
+    JSON.stringify(restoredQueue) ===
+      JSON.stringify([
+        ['waiting', 'Carla'],
+        ['waiting', 'Diego']
+      ]),
+    JSON.stringify(restoredQueue)
+  )
+  await page.click('[data-testid="tab-history"]')
+  await page.waitForSelector('.history-item')
+  check(
+    '49. após reabrir, o histórico continua',
+    (await page.locator('.history-item').count()) >= 5
+  )
+  await page.click('[data-testid="tab-library"]')
+  await page.check('[data-testid="favorites-only"]')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="song-count"]')?.textContent?.startsWith('1 '),
+    null,
+    { timeout: 8000 }
+  )
+  await page.uncheck('[data-testid="favorites-only"]')
+  await page.fill('.search', 'zz-77')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="song-count"]')?.textContent?.startsWith('1 '),
+    null,
+    { timeout: 8000 }
+  )
+  check('50. após reabrir, favorito e metadados editados continuam', true)
   await app.close()
 
   const db = new DatabaseSync(dbPath, { readOnly: true })
@@ -349,7 +627,7 @@ try {
   db.close()
   check(
     '28. SQLite contém as músicas e contador de execuções',
-    rows.n === 5 && rows.plays >= 1,
+    rows.n === 5 && rows.plays >= 1 && version === 2,
     `songs=${rows.n} plays=${rows.plays} user_version=${version}`
   )
 
