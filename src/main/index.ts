@@ -3,9 +3,12 @@ import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import type { DatabaseSync } from 'node:sqlite'
 import type { AppInfo } from '@shared/types'
 import { DatabaseError, openDatabase } from './db/database'
+import { FolderRepository } from './db/folder-repository'
+import { QueueRepository } from './db/queue-repository'
 import { SongRepository } from './db/song-repository'
 import { registerIpc } from './ipc'
 import { LibraryService } from './library/library-service'
+import { QueueService } from './library/queue-service'
 import { createFileLogger } from './logger'
 import { handleMediaProtocol, registerMediaScheme } from './media-protocol'
 
@@ -98,7 +101,12 @@ async function boot(): Promise<void> {
     logDir: logger.dir
   }
   handleMediaProtocol(repo, logger)
-  registerIpc({ library: new LibraryService(repo, logger), logger, info })
+  registerIpc({
+    library: new LibraryService(repo, new FolderRepository(database), logger),
+    queue: new QueueService(new QueueRepository(database), repo, logger),
+    logger,
+    info
+  })
   applyContentSecurityPolicy()
   logger.info('Biblioteca carregada', { songs: repo.count() })
   createWindow()
