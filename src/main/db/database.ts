@@ -41,6 +41,7 @@ function openAndMigrate(path: string): DatabaseSync {
   const db = new DatabaseSync(path)
   try {
     db.exec('PRAGMA journal_mode = WAL')
+    db.exec('PRAGMA foreign_keys = ON')
     // Força a leitura do cabeçalho: falha aqui se o arquivo não for um SQLite válido.
     const check = db.prepare('PRAGMA quick_check').get() as { quick_check: string }
     if (check.quick_check !== 'ok') throw new Error(`quick_check: ${check.quick_check}`)

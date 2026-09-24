@@ -34,5 +34,47 @@ export const migrations: Migration[] = [
         value TEXT NOT NULL
       );
     `
+  },
+  {
+    version: 2,
+    name: 'zip songs, favorites, code, queue, history and library folders',
+    sql: `
+      ALTER TABLE songs ADD COLUMN source TEXT NOT NULL DEFAULT 'files';
+      ALTER TABLE songs ADD COLUMN zip_mp3_entry TEXT NOT NULL DEFAULT '';
+      ALTER TABLE songs ADD COLUMN zip_cdg_entry TEXT NOT NULL DEFAULT '';
+      ALTER TABLE songs ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE songs ADD COLUMN code TEXT NOT NULL DEFAULT '';
+      ALTER TABLE songs ADD COLUMN genre_norm TEXT NOT NULL DEFAULT '';
+      ALTER TABLE songs ADD COLUMN code_norm TEXT NOT NULL DEFAULT '';
+      CREATE INDEX idx_songs_favorite ON songs (favorite);
+      CREATE INDEX idx_songs_code ON songs (code_norm);
+
+      CREATE TABLE queue (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        song_id    INTEGER NOT NULL REFERENCES songs (id) ON DELETE CASCADE,
+        singer     TEXT    NOT NULL DEFAULT '',
+        position   INTEGER NOT NULL,
+        status     TEXT    NOT NULL DEFAULT 'waiting'
+                   CHECK (status IN ('waiting', 'playing', 'done')),
+        created_at TEXT    NOT NULL
+      );
+      CREATE INDEX idx_queue_status_position ON queue (status, position);
+
+      CREATE TABLE history (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        song_id   INTEGER REFERENCES songs (id) ON DELETE SET NULL,
+        title     TEXT NOT NULL,
+        artist    TEXT NOT NULL DEFAULT '',
+        singer    TEXT NOT NULL DEFAULT '',
+        played_at TEXT NOT NULL
+      );
+      CREATE INDEX idx_history_played_at ON history (played_at);
+
+      CREATE TABLE library_folders (
+        path      TEXT PRIMARY KEY COLLATE NOCASE,
+        added_at  TEXT NOT NULL,
+        last_scan TEXT
+      );
+    `
   }
 ]
