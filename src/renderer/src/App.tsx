@@ -5,6 +5,7 @@ import { HistoryPanel } from './components/HistoryPanel'
 import { LibraryPanel } from './components/LibraryPanel'
 import { PlayerPanel } from './components/PlayerPanel'
 import { QueuePanel } from './components/QueuePanel'
+import { useCamera } from './camera/useCamera'
 import { useLibrary } from './hooks/useLibrary'
 import { useQueue } from './hooks/useQueue'
 import { usePlayer } from './player/usePlayer'
@@ -30,6 +31,7 @@ function readStoredSinger(): string {
 export function App(): React.JSX.Element {
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const cameraVideoRef = useRef<HTMLVideoElement>(null)
   const library = useLibrary()
   const queue = useQueue()
   const { refresh: refreshQueue, refreshHistory } = queue
@@ -63,6 +65,31 @@ export function App(): React.JSX.Element {
   // O player precisa do callback de fim de música, que precisa do player: a ref fecha o ciclo.
   const advanceRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const player = usePlayer(audioRef, canvasRef, { onEnded: () => void advanceRef.current() })
+  const camera = useCamera(cameraVideoRef)
+
+  // "Ligar ao tocar": só liga se o usuário pediu, e só uma vez por música (não religa após desligar).
+  const { autoStart } = camera.state.prefs
+  const cameraStatus = camera.state.status
+  const playing = player.state.status === 'playing'
+  const autoStartedFor = useRef<number | null>(null)
+  const songId = player.state.songId
+  const startCamera = camera.start
+  const setCameraAutoStart = camera.setAutoStart
+  // Marcar a opção com uma música já tocando vale só a partir da PRÓXIMA música: não liga na hora.
+  const changeAutoStart = useCallback(
+    (value: boolean): void => {
+      if (value) autoStartedFor.current = songId
+      setCameraAutoStart(value)
+    },
+    [setCameraAutoStart, songId]
+  )
+  const cameraUi = { ...camera, setAutoStart: changeAutoStart }
+  useEffect(() => {
+    if (!playing || !autoStart || cameraStatus !== 'off' || songId === null) return
+    if (autoStartedFor.current === songId) return
+    autoStartedFor.current = songId
+    void startCamera()
+  }, [playing, autoStart, cameraStatus, songId, startCamera])
 
   const startQueueItem = useCallback(
     async (item: QueueItem): Promise<void> => {
@@ -205,6 +232,8 @@ export function App(): React.JSX.Element {
           player={player}
           audioRef={audioRef}
           canvasRef={canvasRef}
+          camera={cameraUi}
+          cameraVideoRef={cameraVideoRef}
         />
       </main>
       {editing && (

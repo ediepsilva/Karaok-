@@ -591,3 +591,66 @@ body {
   gap: 8px;
   margin-top: 6px;
 }
+
+/* ---------- Fase 3: câmera do cantor ---------- */
+
+.camera-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.select {
+  max-width: 220px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.camera-msg {
+  flex-basis: 100%;
+}
+
+.camera-view {
+  display: none;
+  object-fit: cover;
+  background: #000;
+}
+
+.camera-view.mirror {
+  transform: scaleX(-1);
+}
+
+/* Sobre o canto: pequena, sobreposta ao CDG (também em tela cheia). */
+.stage.cam-on.cam-pip .camera-view {
+  display: block;
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 26%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+/* Ao lado: a área é dividida entre CDG e câmera. */
+.stage.cam-on.cam-side {
+  gap: 8px;
+}
+
+.stage.cam-on.cam-side .cdg-canvas {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.stage.cam-on.cam-side .camera-view {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}

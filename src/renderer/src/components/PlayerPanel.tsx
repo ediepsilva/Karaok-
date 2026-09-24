@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { PlayableSong } from '@shared/types'
 import { formatTime } from '../format'
+import type { CameraController } from '../camera/useCamera'
+import { CameraControls } from './CameraControls'
 import type { PlayerControls } from '../player/usePlayer'
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
   player: PlayerControls
   audioRef: RefObject<HTMLAudioElement | null>
   canvasRef: RefObject<HTMLCanvasElement | null>
+  camera: CameraController
+  cameraVideoRef: RefObject<HTMLVideoElement | null>
 }
 
 export function PlayerPanel({
@@ -21,7 +25,9 @@ export function PlayerPanel({
   hasNext,
   player,
   audioRef,
-  canvasRef
+  canvasRef,
+  camera,
+  cameraVideoRef
 }: Props): React.JSX.Element {
   const { state } = player
   const stageRef = useRef<HTMLDivElement>(null)
@@ -62,8 +68,20 @@ export function PlayerPanel({
         </div>
       </div>
 
-      <div ref={stageRef} className={`stage${fullscreen ? ' fullscreen' : ''}`} data-testid="stage">
+      <div
+        ref={stageRef}
+        className={`stage cam-${camera.state.prefs.layout}${camera.state.status === 'on' ? ' cam-on' : ''}${fullscreen ? ' fullscreen' : ''}`}
+        data-testid="stage"
+      >
         <canvas ref={canvasRef} className="cdg-canvas" data-testid="cdg-canvas" />
+        <video
+          ref={cameraVideoRef}
+          className={`camera-view${camera.state.prefs.mirror ? ' mirror' : ''}`}
+          data-testid="camera-video"
+          muted
+          playsInline
+          autoPlay
+        />
         <audio ref={audioRef} preload="auto" data-testid="audio" />
         {fullscreen && (
           <button className="btn fs-exit" onClick={toggleFullscreen}>
@@ -82,6 +100,8 @@ export function PlayerPanel({
           {state.cdgError}
         </div>
       )}
+
+      <CameraControls camera={camera} />
 
       <div className="timeline">
         <span className="time" data-testid="time-current">
