@@ -11,6 +11,7 @@ import { LibraryService } from './library/library-service'
 import { QueueService } from './library/queue-service'
 import { createFileLogger } from './logger'
 import { handleMediaProtocol, registerMediaScheme } from './media-protocol'
+import { createTrustedOrigin, installPermissionPolicy } from './permissions'
 
 // Permite isolar dados em testes end-to-end sem tocar no perfil do usuário.
 if (process.env['KARAOKE_USER_DATA']) app.setPath('userData', process.env['KARAOKE_USER_DATA'])
@@ -108,6 +109,11 @@ async function boot(): Promise<void> {
     info
   })
   applyContentSecurityPolicy()
+  installPermissionPolicy(
+    session.defaultSession,
+    createTrustedOrigin(process.env['ELECTRON_RENDERER_URL']),
+    logger
+  )
   logger.info('Biblioteca carregada', { songs: repo.count() })
   createWindow()
 }
