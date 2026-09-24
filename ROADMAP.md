@@ -18,9 +18,15 @@ Cada fase reaproveita o mesmo projeto; nada é recriado do zero.
 - Fila de cantores com nome, ordem, status (aguardando/tocando) e avanço automático; persiste ao reabrir.
 - Banco na versão 2 (migração preserva os dados da Fase 1).
 
-## Fase 3 — Câmera
+## Fase 3 — Câmera (concluída)
 
-Captura da webcam/câmera do cantor, exibida junto do CDG (`getUserMedia`).
+- Captura de **vídeo** da câmera do cantor (`getUserMedia`), com escolha do dispositivo, hot-plug e
+  tratamento de erros (sem câmera, sem permissão do Windows, em uso, câmera desconectada).
+- Exibida junto do CDG: sobre o canto ou ao lado; espelhar; funciona em tela cheia.
+- “Ligar ao tocar” opcional (a câmera nunca liga sozinha por padrão).
+- Política de permissões do Electron: só vídeo e tela cheia, só para o próprio app; microfone negado.
+- O `MediaStream` fica exposto em `useCamera().stream` para a Fase 6 (transmissão) reaproveitar.
+- **Fora do escopo desta fase**: gravação, foto, transmissão e qualquer análise da imagem.
 
 ## Fase 4 — Avaliação vocal
 

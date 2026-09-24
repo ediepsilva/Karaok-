@@ -44,6 +44,19 @@ npm run dist       # gera o app em release/win-unpacked/
 - **Fila**: informe o **nome do cantor**, use ＋ na música; reordene com ↑ ↓, remova ou toque na hora. Ao fim de uma música, a próxima da fila toca sozinha; **Próxima** pula. A fila persiste ao fechar o app.
 - **Histórico**: cada execução guarda música e cantor; dá para tocar de novo ou reenfileirar.
 
+## Câmera do cantor (Fase 3)
+
+- **Ligar câmera** abre a webcam (só vídeo) e mostra a imagem junto do CDG: **sobre o canto** ou
+  **ao lado**. Há seletor de câmera (troca ao vivo), **Espelhar** e, em tela cheia, a câmera
+  continua junto do CDG.
+- **Ligar ao tocar** (opcional): liga a câmera quando uma música começa. Vale a partir da próxima
+  música e, se você desligar à mão, ela não religa na mesma música. Por padrão a câmera **nunca**
+  liga sozinha, e ao reabrir o app ela começa desligada.
+- **Privacidade**: nada é gravado nem enviado; a imagem só é exibida na tela. O microfone
+  continua bloqueado (será liberado apenas com a avaliação vocal).
+- Se o Windows bloquear a câmera, o app mostra onde liberar (Configurações › Privacidade ›
+  Câmera). Uma câmera desconectada durante o uso é informada.
+
 ## Arquitetura
 
 ```
@@ -88,3 +101,6 @@ arquivo estiver corrompido, é movido para `karaoke.db.corrupt-<data>` e um banc
 - CD+G: implementados os comandos usados na prática (presets, tile block/XOR, scroll, paleta,
   transparência). Efeitos raros de emuladores (canais R-W/subcódigo extra) não são tratados.
 - Sem monitor secundário ainda; só tela cheia da área do CDG.
+- Câmera: os testes automáticos usam uma câmera virtual; a qualidade da imagem da webcam real e o
+  comportamento de desconectar uma webcam USB dependem de conferência manual (TESTING.md).
+- Câmera: não há gravação, foto nem transmissão (Fases 5 e 6); o app apenas exibe a imagem.

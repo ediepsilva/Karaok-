@@ -59,6 +59,21 @@ _bonita_. Isso é o checklist manual abaixo.
 - [ ] fechar e abrir: a música continua cadastrada
 - [ ] apagar/renomear a pasta e clicar na música: mensagem amigável, sem travar
 
+### Câmera (Fase 3), com a webcam real
+
+Os testes automáticos usam a câmera virtual do Chromium. Só você confirma a webcam de verdade:
+
+- [ ] “Ligar câmera”: a luz da webcam acende e a sua imagem aparece
+- [ ] a imagem tem boa qualidade e não está com atraso perceptível
+- [ ] “Espelhar” inverte a imagem como um espelho
+- [ ] “Sobre o canto” e “Ao lado do CDG” mostram a câmera e o CDG juntos
+- [ ] tela cheia mantém a câmera junto do CDG
+- [ ] com uma música tocando, o CDG e o áudio continuam sincronizados
+- [ ] “Desligar câmera”: a luz apaga
+- [ ] com mais de uma câmera (ex.: USB): trocar no seletor muda a imagem
+- [ ] desconectar a webcam USB com a câmera ligada: aparece “A câmera foi desconectada.”
+- [ ] em Configurações do Windows › Privacidade › Câmera, bloqueie o acesso: aparece a orientação
+
 ## Resultados
 
 Ver o relatório final da Fase 1 (preenchido após a execução).
