@@ -4,10 +4,12 @@ import { IPC } from '@shared/ipc-channels'
 import type { LibraryService } from './library/library-service'
 import type { QueueService } from './library/queue-service'
 import type { Logger } from './logger'
+import type { MicGate } from './mic-gate'
 
 export interface IpcDeps {
   library: LibraryService
   queue: QueueService
+  micGate: MicGate
   logger: Logger
   info: AppInfo
 }
@@ -36,7 +38,7 @@ function validId(value: unknown): number {
   return value
 }
 
-export function registerIpc({ library, queue, logger, info }: IpcDeps): void {
+export function registerIpc({ library, queue, micGate, logger, info }: IpcDeps): void {
   const handle = <T>(channel: string, fn: (...args: unknown[]) => T | Promise<T>): void => {
     ipcMain.handle(channel, (_event, ...args: unknown[]) =>
       guard(logger, channel, () => fn(...args))
@@ -97,6 +99,20 @@ export function registerIpc({ library, queue, logger, info }: IpcDeps): void {
   handle(IPC.historyList, (limit) => queue.history(typeof limit === 'number' ? limit : undefined))
   handle(IPC.historyClear, () => {
     queue.clearHistory()
+    return null
+  })
+
+  // Microfone: armar a trava e informar o estado (a permissão em si é decidida em permissions.ts)
+  handle(IPC.voiceArm, () => {
+    micGate.arm()
+    return null
+  })
+  handle(IPC.voiceActive, (active) => {
+    if (typeof active !== 'boolean') throw new Error('Estado do microfone inválido.')
+    if (micGate.isActive !== active) {
+      logger.info(active ? 'Microfone ativo' : 'Microfone liberado')
+    }
+    micGate.setActive(active)
     return null
   })
 

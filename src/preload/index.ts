@@ -31,6 +31,10 @@ const api: KaraokeApi = {
     list: (limit) => ipcRenderer.invoke(IPC.historyList, limit),
     clear: () => ipcRenderer.invoke(IPC.historyClear)
   },
+  voice: {
+    arm: () => ipcRenderer.invoke(IPC.voiceArm),
+    setActive: (active) => ipcRenderer.invoke(IPC.voiceActive, active)
+  },
   log: (level, message, context) => ipcRenderer.send(IPC.log, level, message, context)
 }
 

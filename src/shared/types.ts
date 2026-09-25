@@ -147,6 +147,12 @@ export interface KaraokeApi {
     list(limit?: number): Promise<IpcResult<HistoryEntry[]>>
     clear(): Promise<IpcResult<null>>
   }
+  voice: {
+    /** Arma a trava do microfone: o próximo pedido de áudio (e só ele) será concedido. */
+    arm(): Promise<IpcResult<null>>
+    /** Informa ao main que o microfone abriu/fechou (auditoria e consulta de dispositivos). */
+    setActive(active: boolean): Promise<IpcResult<null>>
+  }
   log(level: LogLevel, message: string, context?: Record<string, unknown>): void
 }
 

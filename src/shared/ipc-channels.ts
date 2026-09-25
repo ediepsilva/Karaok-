@@ -19,5 +19,7 @@ export const IPC = {
   queueClear: 'queue:clear',
   historyList: 'history:list',
   historyClear: 'history:clear',
+  voiceArm: 'voice:arm',
+  voiceActive: 'voice:active',
   log: 'log:write'
 } as const

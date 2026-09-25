@@ -11,6 +11,7 @@ import { LibraryService } from './library/library-service'
 import { QueueService } from './library/queue-service'
 import { createFileLogger } from './logger'
 import { handleMediaProtocol, registerMediaScheme } from './media-protocol'
+import { MicGate } from './mic-gate'
 import { createTrustedOrigin, installPermissionPolicy } from './permissions'
 
 // Permite isolar dados em testes end-to-end sem tocar no perfil do usuário.
@@ -102,9 +103,11 @@ async function boot(): Promise<void> {
     logDir: logger.dir
   }
   handleMediaProtocol(repo, logger)
+  const micGate = new MicGate()
   registerIpc({
     library: new LibraryService(repo, new FolderRepository(database), logger),
     queue: new QueueService(new QueueRepository(database), repo, logger),
+    micGate,
     logger,
     info
   })
@@ -112,7 +115,8 @@ async function boot(): Promise<void> {
   installPermissionPolicy(
     session.defaultSession,
     createTrustedOrigin(process.env['ELECTRON_RENDERER_URL']),
-    logger
+    logger,
+    micGate
   )
   logger.info('Biblioteca carregada', { songs: repo.count() })
   createWindow()
