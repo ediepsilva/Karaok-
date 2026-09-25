@@ -17,6 +17,7 @@ export class CdgCanvasRenderer {
   }
 
   clear(): void {
+    console.debug('[cdg] renderer.clear() chamado (a tela do CDG foi zerada)')
     this.lastVersion = -1
     this.lastDecoder = null
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)

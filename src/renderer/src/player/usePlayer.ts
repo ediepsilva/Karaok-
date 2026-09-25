@@ -72,8 +72,19 @@ export function usePlayer(
         void window.api.songs.markPlayed(songIdRef.current, singerRef.current)
       }
     }
-    const onPause = (): void => dispatch({ type: 'pause' })
+    const onPause = (): void => {
+      window.api.log('DEBUG', '[player] pause()', {
+        songId: songIdRef.current,
+        t: audio.currentTime
+      })
+      dispatch({ type: 'pause' })
+    }
     const onEnded = (): void => {
+      window.api.log('DEBUG', '[player] evento "ended" recebido', {
+        songId: songIdRef.current,
+        currentTimeAntesDoReset: audio.currentTime,
+        duration: audio.duration
+      })
       dispatch({ type: 'ended' })
       audio.pause() // sem isso, voltar ao início após o fim religa a reprodução
       audio.currentTime = 0
@@ -86,23 +97,78 @@ export function usePlayer(
       window.api.log('ERROR', 'Falha de reprodução de áudio', {
         songId: songIdRef.current,
         code: audio.error?.code,
-        detail: audio.error?.message
+        detail: audio.error?.message,
+        currentTime: audio.currentTime,
+        networkState: audio.networkState,
+        readyState: audio.readyState
       })
       dispatch({ type: 'fail', message: AUDIO_ERROR_MESSAGE })
     }
+    // ---- diagnóstico temporário: reinício sozinho da música/CDG (remover após confirmar a causa) ----
+    const onStalled = (): void =>
+      window.api.log('DEBUG', '[player] evento "stalled" (sem dados chegando)', {
+        songId: songIdRef.current,
+        t: audio.currentTime,
+        networkState: audio.networkState
+      })
+    const onWaiting = (): void =>
+      window.api.log('DEBUG', '[player] evento "waiting" (aguardando buffer)', {
+        songId: songIdRef.current,
+        t: audio.currentTime
+      })
+    const onSeeking = (): void =>
+      window.api.log('DEBUG', '[player] evento "seeking"', {
+        songId: songIdRef.current,
+        t: audio.currentTime
+      })
+    const onEmptied = (): void =>
+      window.api.log('WARN', '[player] evento "emptied" (o navegador descartou a mídia)', {
+        songId: songIdRef.current,
+        t: audio.currentTime,
+        src: audio.currentSrc
+      })
+    const onAbort = (): void =>
+      window.api.log('WARN', '[player] evento "abort" (carregamento da mídia abortado)', {
+        songId: songIdRef.current,
+        t: audio.currentTime,
+        src: audio.currentSrc
+      })
     audio.addEventListener('playing', onPlaying)
     audio.addEventListener('pause', onPause)
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('durationchange', onDuration)
     audio.addEventListener('error', onError)
+    audio.addEventListener('stalled', onStalled)
+    audio.addEventListener('waiting', onWaiting)
+    audio.addEventListener('seeking', onSeeking)
+    audio.addEventListener('emptied', onEmptied)
+    audio.addEventListener('abort', onAbort)
 
     let frame = 0
+    let lastLoggedTime = -1
     const loop = (): void => {
       const decoder = decoderRef.current
       if (decoder) {
         decoder.seekTo(audio.currentTime)
         renderer.draw(decoder)
       }
+      // diagnóstico temporário: qualquer salto de tempo pra trás não explicado por load()/stop()
+      if (lastLoggedTime >= 0 && audio.currentTime < lastLoggedTime - 1) {
+        window.api.log(
+          'WARN',
+          '[player] currentTime voltou para trás sozinho (possível reinício)',
+          {
+            songId: songIdRef.current,
+            de: lastLoggedTime,
+            para: audio.currentTime,
+            loadToken: loadToken.current,
+            networkState: audio.networkState,
+            readyState: audio.readyState,
+            currentSrc: audio.currentSrc
+          }
+        )
+      }
+      lastLoggedTime = audio.currentTime
       const quarter = Math.floor(audio.currentTime * 4)
       if (quarter !== lastTick.current) {
         lastTick.current = quarter
@@ -119,6 +185,11 @@ export function usePlayer(
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('durationchange', onDuration)
       audio.removeEventListener('error', onError)
+      audio.removeEventListener('stalled', onStalled)
+      audio.removeEventListener('waiting', onWaiting)
+      audio.removeEventListener('seeking', onSeeking)
+      audio.removeEventListener('emptied', onEmptied)
+      audio.removeEventListener('abort', onAbort)
     }
   }, [audioRef, canvasRef])
 
@@ -127,6 +198,15 @@ export function usePlayer(
       const audio = audioRef.current
       if (!audio) return
       const token = ++loadToken.current
+      window.api.log('DEBUG', '[player] load() chamado', {
+        songId: song.id,
+        title: song.title,
+        token,
+        anteriorSongId: songIdRef.current,
+        tAntesDeCarregar: audio.currentTime,
+        // pilha de chamadas: mostra QUEM chamou load() (App.tsx: playDirect/startQueueItem)
+        stack: new Error().stack?.split('\n').slice(1, 5).join(' | ')
+      })
       audio.pause()
       audio.removeAttribute('src')
       decoderRef.current = null
@@ -144,6 +224,10 @@ export function usePlayer(
         return
       }
 
+      window.api.log('DEBUG', '[player] audio.src definido', {
+        songId: song.id,
+        url: mediaUrl(song.id, 'mp3')
+      })
       audio.src = mediaUrl(song.id, 'mp3')
       audio.load()
       audio.play().catch((error: unknown) => {
@@ -184,6 +268,11 @@ export function usePlayer(
   const stop = useCallback((): void => {
     const audio = audioRef.current
     if (!audio || !audio.getAttribute('src')) return
+    window.api.log('DEBUG', '[player] stop() chamado', {
+      songId: songIdRef.current,
+      t: audio.currentTime,
+      stack: new Error().stack?.split('\n').slice(1, 5).join(' | ')
+    })
     dispatch({ type: 'stop' })
     audio.pause()
     audio.currentTime = 0
