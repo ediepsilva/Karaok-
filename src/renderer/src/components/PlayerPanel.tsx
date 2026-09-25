@@ -108,9 +108,6 @@ export function PlayerPanel({
         </div>
       )}
 
-      <CameraControls camera={camera} />
-      <VoicePanel voice={voice} melody={melody} />
-
       <div className="timeline">
         <span className="time" data-testid="time-current">
           {formatTime(state.currentTime)}
@@ -170,6 +167,13 @@ export function PlayerPanel({
       </div>
       <div className="status" data-testid="player-status">
         {state.status}
+      </div>
+
+      {/* CDG e controles de reprodução ficam sempre visíveis acima; câmera e avaliação vocal
+          rolam nesta área própria, sem nunca espremer o CDG (Fase 1, correção pós-teste manual). */}
+      <div className="player-extra" data-testid="player-extra">
+        <CameraControls camera={camera} />
+        <VoicePanel voice={voice} melody={melody} />
       </div>
     </section>
   )

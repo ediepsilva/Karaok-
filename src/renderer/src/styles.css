@@ -247,12 +247,15 @@ body {
 
 .stage {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  /* Nunca encolhe abaixo de 260px: câmera/avaliação vocal (ver .player-extra) não podem
+     espremer o CDG para fora da vista, mesmo com a janela baixa ou muito conteúdo abaixo. */
+  flex: 1 0 260px;
+  min-height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #000;
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -266,6 +269,18 @@ body {
 
 .stage.fullscreen {
   border-radius: 0;
+  border: none;
+}
+
+/* Câmera e avaliação vocal: rolam aqui, sempre abaixo do CDG e dos controles de reprodução,
+   e nunca disputam altura com o palco (ver .stage acima). */
+.player-extra {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .fs-exit {
