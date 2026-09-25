@@ -6,6 +6,7 @@ import { LibraryPanel } from './components/LibraryPanel'
 import { PlayerPanel } from './components/PlayerPanel'
 import { QueuePanel } from './components/QueuePanel'
 import { useCamera } from './camera/useCamera'
+import { useCelebration } from './celebration/useCelebration'
 import { useLibrary } from './hooks/useLibrary'
 import { useMelody } from './voice/useMelody'
 import { useVoice } from './voice/useVoice'
@@ -78,6 +79,7 @@ export function App(): React.JSX.Element {
     melody: melody.info?.notes ?? null,
     audioRef
   })
+  const celebration = useCelebration(voice.result)
 
   // "Ligar ao tocar": só liga se o usuário pediu, e só uma vez por música (não religa após desligar).
   const { autoStart } = camera.state.prefs
@@ -248,6 +250,7 @@ export function App(): React.JSX.Element {
           cameraVideoRef={cameraVideoRef}
           voice={voice}
           melody={melody}
+          celebration={celebration}
         />
       </main>
       {editing && (

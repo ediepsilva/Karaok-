@@ -24,7 +24,8 @@
     "fixtures": "tsx scripts/generate-fixtures.ts",
     "teste": "electron-vite build && electron-vite preview",
     "e2e": "npm run build && node scripts/e2e.mjs",
-    "e2e:voice": "npm run build && node scripts/e2e-voice.mjs"
+    "e2e:voice": "npm run build && node scripts/e2e-voice.mjs",
+    "e2e:celebration": "npm run build && node scripts/e2e-celebration.mjs"
   },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",

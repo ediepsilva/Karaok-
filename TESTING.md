@@ -8,6 +8,8 @@ npm run lint        # ESLint
 npm run format:check
 npm test            # Vitest: testes unitários e de integração (SQLite e disco reais)
 npm run e2e         # build + abre o Electron de verdade e usa a interface
+npm run e2e:voice       # idem, para microfone/avaliação vocal (Fase 4)
+npm run e2e:celebration # idem, para aplausos + voz ao fim da apresentação (Fase 5)
 ```
 
 Para rodar o mesmo teste ponta a ponta no app empacotado (depois de `npm run dist`), no PowerShell:
@@ -155,6 +157,23 @@ etiquetas, transposição, arquivo inválido, troca de trilha, persistência (`n
 
 **Sem MIDI** (ex.: seu MP3+G sem arquivo de melodia): o app deve continuar em **AVALIAÇÃO BÁSICA**,
 avisando que não mede afinação.
+
+## Fase 5 — Aplausos + voz (checklist manual)
+
+Automatizado (não repetir à mão): fórmula nota→plano de aplausos, sorteio de mensagens, ducking e
+fade-out com um `AudioContext`/fala falsos (`npm test`), e a fala real acontecendo com o app real
+(`npm run e2e:celebration`).
+
+**O que só dá para confirmar ouvindo:**
+
+1. Cante e deixe a avaliação terminar: aplausos tocam e, pouco depois, uma voz fala seu nome e a
+   nota, em português. Confira se a voz soa bem no seu Windows (varia por instalação).
+2. Repita 2–3 vezes com notas bem diferentes (alta, média, baixa): mais palmas, mais volume e
+   assobio nas notas altas; ainda assim uma salva de palmas mesmo na nota mais baixa.
+3. Desmarque **Comemorar com aplausos e voz** e cante de novo: nada deve tocar.
+4. Ajuste o volume da comemoração e confira que ele não muda o volume da música.
+5. Cante de novo enquanto a comemoração anterior ainda está tocando (ou troque de música rápido):
+   não deve sobrepor duas falas ao mesmo tempo, nem travar o app.
 
 ## Resultados
 

@@ -70,6 +70,10 @@ Painel **🎤 Avaliação vocal** (embaixo do player). Detalhes da fórmula:
   entrada das frases, consistência, % cantado; oitava ignorada, transposição detectada) e rotula o
   resultado **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**. Detalhes em
   [docs/AVALIACAO_COM_MELODIA.md](docs/AVALIACAO_COM_MELODIA.md).
+- **Aplausos + voz (Fase 5).** Ao fim de uma apresentação com nota, aplausos sintéticos
+  proporcionais à nota e uma frase falada parabenizando o cantor pelo nome (voz do próprio sistema,
+  sem internet); aplausos abaixam durante a fala e somem com _fade-out_. Liga/desliga e volume
+  próprios. Detalhes em [docs/FASE5_APLAUSOS_VOZ.md](docs/FASE5_APLAUSOS_VOZ.md).
 - **Microfone restrito.** A avaliação vem desligada. O microfone só abre ao apertar **Testar
   microfone** ou durante uma apresentação com **Avaliar minha apresentação** marcado, e é liberado
   ao terminar, ao desmarcar e após pausas longas. Nunca liga sozinho ao abrir o app.

@@ -54,10 +54,13 @@ qual foi usado.
 - **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**; sem melodia continua **AVALIAÇÃO BÁSICA**.
   Ver [docs/AVALIACAO_COM_MELODIA.md](docs/AVALIACAO_COM_MELODIA.md).
 
-## Fase 5 — Nota + Aplausos + Voz
+## Fase 5 — Nota + Aplausos + Voz (implementada; falta teste manual de áudio)
 
-Aplausos proporcionais à nota, Text-to-Speech com mensagens variadas e _audio ducking_ dos
-aplausos durante a fala, seguido de fade-out.
+- Ao fim de uma apresentação com nota: aplausos sintéticos (Web Audio) proporcionais à nota,
+  seguidos de uma frase falada (TTS, voz do sistema) parabenizando o cantor pelo nome.
+- Aplausos abaixam durante a fala (_ducking_) e desaparecem com _fade-out_ ao final.
+- Liga/desliga e volume próprios, guardados entre sessões.
+- Ver [docs/FASE5_APLAUSOS_VOZ.md](docs/FASE5_APLAUSOS_VOZ.md).
 
 ## Fase 6 — Transmissão remota
 

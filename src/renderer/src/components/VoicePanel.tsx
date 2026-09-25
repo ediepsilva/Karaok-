@@ -1,6 +1,7 @@
 import { basicComponents } from '../voice/basic-score'
 import { formatNote } from '../voice/mic-errors'
 import type { ReferenceComponents } from '../voice/reference-score'
+import type { CelebrationController } from '../celebration/useCelebration'
 import type { MelodyController } from '../voice/useMelody'
 import type { VoiceController, VoiceResult } from '../voice/useVoice'
 import { MANUAL_LATENCY_MAX_MS, MANUAL_LATENCY_MIN_MS } from '../voice/voice-config'
@@ -9,6 +10,7 @@ import { MODE_LABELS } from '../voice/reference'
 interface Props {
   voice: VoiceController
   melody: MelodyController
+  celebration: CelebrationController
 }
 
 const STATE_LABEL = { silence: 'silêncio', noise: 'ruído', voice: 'voz', idle: '—' } as const
@@ -25,7 +27,7 @@ const pct = (v: number): string => `${Math.round(v * 100)}%`
 const levelWidth = (dbfs: number): string =>
   `${Math.max(0, Math.min(100, ((dbfs + 70) / 70) * 100))}%`
 
-export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
+export function VoicePanel({ voice, melody, celebration }: Props): React.JSX.Element {
   const { live, prefs, info } = voice
   const micOn = voice.micStatus === 'on'
   const selected = voice.devices.some((d) => d.id === (info?.deviceId ?? prefs.deviceId))
@@ -60,6 +62,32 @@ export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
             />
             Avaliar minha apresentação
           </label>
+          <div className="voice-row">
+            <label className="check">
+              <input
+                type="checkbox"
+                data-testid="celebration-enabled"
+                checked={celebration.prefs.enabled}
+                onChange={(e) => celebration.setEnabled(e.target.checked)}
+              />
+              Comemorar com aplausos e voz ao terminar
+            </label>
+            {celebration.prefs.enabled && (
+              <label className="field inline">
+                Volume da comemoração
+                <input
+                  type="range"
+                  data-testid="celebration-volume"
+                  aria-label="Volume da comemoração"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={celebration.prefs.volume}
+                  onChange={(e) => celebration.setVolume(Number(e.target.value))}
+                />
+              </label>
+            )}
+          </div>
           {melody.info && melody.info.notes.length > 0 ? (
             <div className="hint" data-testid="voice-mode-label">
               <strong>{MODE_LABELS.reference}</strong>
