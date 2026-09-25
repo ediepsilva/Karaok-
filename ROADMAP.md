@@ -30,7 +30,25 @@ Cada fase reaproveita o mesmo projeto; nada é recriado do zero.
 
 ## Fase 4 — Avaliação vocal
 
-Análise do microfone (afinação, ritmo, entradas, % cantado) para nota de 0 a 100.
+Dividida em duas partes. Um MP3+G **não contém a melodia**; por isso há dois modos, e o app diz
+qual foi usado.
+
+### Fase 4A — Microfone + análise vocal base + AVALIAÇÃO BÁSICA (concluída)
+
+- Captura do microfone com trava de permissão, seleção de dispositivo, abertura só durante o teste
+  ou uma apresentação com a avaliação habilitada, e liberação ao terminar.
+- Detecção de voz/silêncio/ruído, pitch (MPM próprio), estabilidade, continuidade, saturação.
+- Compensação de latência (automática, medida por cliques e ajuste manual).
+- Tela de diagnóstico (dispositivo, nível, frequência, nota, confiança, % de voz, latência).
+- **AVALIAÇÃO BÁSICA** (modo recreativo, sem melodia): mede atividade vocal, estabilidade,
+  continuidade e qualidade do sinal. **Não mede afinação.** Fórmula em
+  [docs/AVALIACAO_BASICA.md](docs/AVALIACAO_BASICA.md).
+- Contratos (`reference.ts`) prontos para a melodia de referência. Sem MIDI/KAR ainda.
+
+### Fase 4B — Melodia de referência (pendente, aguarda autorização)
+
+MIDI/KAR ao lado da música (`Musica.mid` / `Musica.kar`), comparação de pitch com a melodia,
+ritmo, entrada das frases, duração e nota de afinação: **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**.
 
 ## Fase 5 — Nota + Aplausos + Voz
 

@@ -57,6 +57,25 @@ npm run dist       # gera o app em release/win-unpacked/
 - Se o Windows bloquear a câmera, o app mostra onde liberar (Configurações › Privacidade ›
   Câmera). Uma câmera desconectada durante o uso é informada.
 
+## Avaliação vocal — microfone (Fase 4A)
+
+Painel **🎤 Avaliação vocal** (embaixo do player). Detalhes da fórmula:
+[docs/AVALIACAO_BASICA.md](docs/AVALIACAO_BASICA.md).
+
+- **Avaliação básica (modo recreativo).** Um MP3+G não traz a melodia, então o app **não sabe qual
+  nota deveria ser cantada**. A nota (0–100) mede atividade vocal, estabilidade do pitch,
+  continuidade e qualidade do sinal, e o resultado avisa que **não mede afinação**. A avaliação com
+  melodia de referência (MIDI/KAR) é a Fase 4B.
+- **Microfone restrito.** A avaliação vem desligada. O microfone só abre ao apertar **Testar
+  microfone** ou durante uma apresentação com **Avaliar minha apresentação** marcado, e é liberado
+  ao terminar, ao desmarcar e após pausas longas. Nunca liga sozinho ao abrir o app.
+- **Diagnóstico** para ajustar com o seu microfone: dispositivo, nível, ruído ambiente, estado
+  (silêncio/ruído/voz), frequência, nota aproximada, confiança, % de voz, latência e quadros
+  descartados.
+- **Latência:** automática, medida por cliques (exige alto-falantes) e ajuste manual.
+- Fones de ouvido são **recomendados** (evitam captar a música), mas não obrigatórios.
+- Nada é gravado nem enviado: só números (nota e resumo). O processamento é 100% local.
+
 ## Arquitetura
 
 ```
@@ -104,3 +123,7 @@ arquivo estiver corrompido, é movido para `karaoke.db.corrupt-<data>` e um banc
 - Câmera: os testes automáticos usam uma câmera virtual; a qualidade da imagem da webcam real e o
   comportamento de desconectar uma webcam USB dependem de conferência manual (TESTING.md).
 - Câmera: não há gravação, foto nem transmissão (Fases 5 e 6); o app apenas exibe a imagem.
+- Avaliação básica: não distingue canto de fala, e a música captada pelo microfone (sem fones)
+  pode contar como voz. Ruído mascarado por voz contínua não é medido. Os limiares foram testados
+  com sinais sintéticos e **ainda precisam ser ajustados com voz real** (TESTING.md).
+- Avaliação básica: não mede afinação nem compara com a melodia (Fase 4B).

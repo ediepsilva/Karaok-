@@ -26,8 +26,18 @@ criação do SQLite, importação pela interface, busca, reprodução, sincronis
 um pixel por segundo), Pause/Continue/Stop/Seek/Volume, tela cheia, MP3 corrompido, CDG inválido,
 arquivos removidos, ZIP (tocar, CDG, seek), edição/busca por gênero e código, favoritos, fila (ordem, reordenar, avanço automático, Próxima, remover), histórico, Reescanear/Limpar indisponíveis, persistência após fechar/abrir e logs.
 
-**Limite:** nenhum script consegue confirmar que o áudio é _audível_ nem que a imagem está
-_bonita_. Isso é o checklist manual abaixo.
+`npm run e2e:voice` (`scripts/e2e-voice.mjs`, Fase 4A) abre o app com um **microfone falso**: o
+Chromium reproduz um WAV conhecido (`--use-file-for-fake-audio-capture`, arquivos em
+`test-assets/voice/`, gerados por `npm run fixtures`). Cenários: tom A4 estável, silêncio, ruído e
+melodia (uma nota por segundo). Verifica a trava de permissão do microfone, dispositivo, frequência
+e nota lidas, nível, captura sem eco/supressão/AGC, início e fim da captura, pausa, parada
+antecipada, desabilitar no meio da música, persistência (o microfone não liga sozinho ao abrir), o
+resultado da avaliação básica e o log. Limite: o microfone falso não escuta o alto-falante, então
+a **medição de latência por cliques** só tem o caminho de falha testado (o de sucesso é coberto por
+teste unitário e pelo checklist manual).
+
+**Limite:** nenhum script consegue confirmar que o áudio é _audível_, que a imagem está _bonita_,
+nem que a nota da avaliação parece _justa_ com voz humana real. Isso é o checklist manual abaixo.
 
 ## Fixture
 
@@ -74,6 +84,57 @@ Os testes automáticos usam a câmera virtual do Chromium. Só você confirma a 
 - [ ] desconectar a webcam USB com a câmera ligada: aparece “A câmera foi desconectada.”
 - [ ] em Configurações do Windows › Privacidade › Câmera, bloqueie o acesso: aparece a orientação
 
+### Microfone e avaliação básica (Fase 4A), com o seu microfone real
+
+Os testes automáticos usam um microfone falso (WAV conhecido). Só você confirma o microfone real e
+ajusta a sensibilidade com voz de verdade. A fórmula está em
+[docs/AVALIACAO_BASICA.md](docs/AVALIACAO_BASICA.md).
+
+**Preparação:** `npm run dev` (ou o `.exe`), abra o painel **🎤 Avaliação vocal** (embaixo do
+player). Se puder, use fones de ouvido (recomendado, não obrigatório).
+
+**A. Diagnóstico (sem música)**
+
+1. Escolha o seu microfone em **Microfone** e clique **Testar microfone**. O selo vira
+   **MICROFONE ATIVO** e o Windows mostra que o microfone está em uso.
+2. Fique em silêncio 5 s: **Estado** = `silêncio`; anote **Ruído ambiente** e **Nível de entrada**.
+   Se aparecer "ambiente ruidoso", o ruído de fundo está alto (ventilador, TV).
+3. Cante uma nota sustentada ("aaaa"): **Estado** = `voz`, **Frequência** e **Nota aproximada**
+   seguem a sua voz; **Confiança** deve ficar alta (> 80%). Cante uma nota conhecida (ex.: um lá =
+   A4 = 440 Hz num afinador de celular) e compare.
+4. Fale normalmente, assobie e bata palmas: anote como o **Estado** reage (fala/assobio contam como
+   voz; palma/ruído devem virar `ruído`).
+5. Nível: a barra não deve ficar no vermelho (saturação). Se ficar, abaixe o ganho do microfone
+   no Windows.
+6. **Quadros/s** deve ficar perto de 90; **Quadros descartados** deve ser 0 ou baixo (se subir
+   muito, o computador está sobrecarregado).
+7. Clique **Parar teste**: o selo volta para **MICROFONE INATIVO** e o indicador do Windows some.
+
+**B. Latência**
+
+1. Com alto-falantes (sem fones) e em silêncio, com o teste ligado, clique **Medir latência**.
+   Sucesso: "Latência de ida e volta medida: N ms (aplicada)". Falha (esperada com fones): a
+   mensagem explica; nada é aplicado.
+2. Ajuste fino: o **Ajuste de latência** (−200 a +600 ms) entra no total exibido em **Latência**.
+   Bluetooth costuma ter 150–300 ms.
+
+**C. Apresentação (avaliação)**
+
+1. Marque **Avaliar minha apresentação** (o microfone continua inativo).
+2. Toque uma música e cante. O microfone abre sozinho ao começar, "Apresentação em análise" mostra
+   segundos e % de voz, e ele **fecha** ao parar/terminar.
+3. Ao fim aparece o cartão **AVALIAÇÃO BÁSICA** com a nota e as barras de cada componente. Confira:
+   cantar o tempo todo dá nota alta; ficar quieto dá ~0; falar sem melodia contínua dá média.
+4. Pause por mais de 20 s: o microfone é liberado e reabre ao retomar.
+5. Desmarque **Avaliar minha apresentação** no meio da música: o microfone fecha e não há nota.
+6. Feche e reabra o app: a avaliação e o ajuste de latência ficam salvos, mas o microfone **não**
+   liga sozinho.
+
+**O que anotar para eu ajustar os limiares:** ruído ambiente e nível em silêncio; nível e confiança
+cantando; se houve "ambiente ruidoso"; a nota de 2–3 apresentações (cantando bem, cantando pouco,
+só falando); e se a nota pareceu justa. Nenhum desses números é um erro por si: servem para calibrar
+`src/renderer/src/voice/voice-config.ts`.
+
 ## Resultados
 
-Ver o relatório final da Fase 1 (preenchido após a execução).
+Ver o relatório final de cada fase (preenchido após a execução).
