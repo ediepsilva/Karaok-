@@ -910,7 +910,7 @@ try {
   const log = logFile ? readFileSync(join(logDir, logFile), 'utf8') : ''
   check(
     '29. logs criados (inicialização, importação, erros)',
-    /Inicializando Karaoke Studio/.test(log) &&
+    /Inicializando Edie Music Show/.test(log) &&
       /Importação concluída/.test(log) &&
       /\[ERROR\] Falha de reprodução de áudio/.test(log) &&
       /\[ERROR\] Falha ao carregar CDG/.test(log) &&

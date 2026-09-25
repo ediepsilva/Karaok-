@@ -4,8 +4,10 @@ Projeto: `C:\xampp\htdocs\Karaoke`. Nada de Maven/Spring/.NET/JDK pertence a est
 
 ## Como abrir
 
-- **Executável (recomendado):** `C:\xampp\htdocs\Karaoke\release\win-unpacked\Karaoke Studio.exe`
-  (duplo clique). Se ele não existir ou você alterou o código: `npm run dist` e abra de novo.
+- **Executável (recomendado):** `C:\xampp\htdocs\Karaoke\release\win-unpacked\Edie Music Show.exe`
+  (duplo clique; o app agora se chama **Edie Music Show** — a pasta de dados continua se chamando
+  `Karaoke Studio`, veja "Logs" mais abaixo). Se ele não existir ou você alterou o código: `npm run
+dist` e abra de novo.
 - **Alternativa (compila e abre):** no terminal, em `C:\xampp\htdocs\Karaoke`, `npm run teste`.
 
 ## Passo a passo

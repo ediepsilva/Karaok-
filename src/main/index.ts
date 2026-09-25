@@ -16,7 +16,16 @@ import { MicGate } from './mic-gate'
 import { createTrustedOrigin, installPermissionPolicy } from './permissions'
 
 // Permite isolar dados em testes end-to-end sem tocar no perfil do usuário.
-if (process.env['KARAOKE_USER_DATA']) app.setPath('userData', process.env['KARAOKE_USER_DATA'])
+if (process.env['KARAOKE_USER_DATA']) {
+  app.setPath('userData', process.env['KARAOKE_USER_DATA'])
+} else {
+  // O app se chamava "Karaoke Studio"; agora é "Edie Music Show". A pasta de dados (biblioteca,
+  // histórico, preferências, banco) fica travada no nome antigo de propósito, para ninguém
+  // "perder" a biblioteca só por causa da troca de nome. Nunca mude esta linha sem migrar os
+  // dados primeiro.
+  app.setPath('userData', join(app.getPath('appData'), 'Karaoke Studio'))
+}
+app.setName('Edie Music Show')
 
 registerMediaScheme()
 
@@ -34,7 +43,7 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#0f1117',
-    title: 'Karaoke Studio',
+    title: 'Edie Music Show',
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -77,7 +86,7 @@ function applyContentSecurityPolicy(): void {
 async function boot(): Promise<void> {
   const dataDir = app.getPath('userData')
   const databasePath = join(dataDir, 'karaoke.db')
-  logger.info('Inicializando Karaoke Studio', {
+  logger.info('Inicializando Edie Music Show', {
     version: app.getVersion(),
     electron: process.versions.electron,
     node: process.versions.node,
@@ -90,7 +99,7 @@ async function boot(): Promise<void> {
   } catch (error) {
     logger.error('Falha de banco na inicialização', { error })
     const message = error instanceof DatabaseError ? error.message : 'Falha ao acessar o banco.'
-    dialog.showErrorBox('Karaoke Studio', `${message}\n\nConsulte o log em:\n${logger.dir}`)
+    dialog.showErrorBox('Edie Music Show', `${message}\n\nConsulte o log em:\n${logger.dir}`)
     app.exit(1)
     return
   }

@@ -1,4 +1,6 @@
-# Karaoke Studio
+# Edie Music Show
+
+_Sua voz. Seu palco. Seu show._
 
 Aplicativo de karaokê para Windows que toca músicas **MP3+G** (`.mp3` + `.cdg`). Estado atual:
 **Fases 1 e 2** (fundação, player, biblioteca avançada com ZIP/metadados/favoritos e fila de cantores). Veja [ROADMAP.md](ROADMAP.md) para as próximas fases e
@@ -105,6 +107,10 @@ tests/          testes Vitest
   a estrutura permite adicioná-los sem reescrever (ver ROADMAP).
 
 ## Banco de dados
+
+> A pasta de dados continua se chamando `Karaoke Studio` (nome antigo do app) mesmo depois da
+> marca virar Edie Music Show — de propósito, para ninguém perder a biblioteca/histórico só por
+> causa da troca de nome (ver `src/main/index.ts`).
 
 SQLite em `%APPDATA%\Karaoke Studio\karaoke.db`, criado automaticamente, com migrações versionadas
 (`PRAGMA user_version`) em `src/main/db/migrations.ts`. Tabelas: `songs` (id, title, artist,

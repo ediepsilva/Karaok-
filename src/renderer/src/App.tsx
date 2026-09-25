@@ -189,7 +189,10 @@ export function App(): React.JSX.Element {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Karaokê</h1>
+        <div className="brand">
+          <h1>Edie Music Show</h1>
+          <p className="tagline">Sua voz. Seu palco. Seu show.</p>
+        </div>
         {flash && (
           <div className="flash" role="status" data-testid="flash">
             {flash}

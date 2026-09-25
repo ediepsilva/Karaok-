@@ -16,7 +16,7 @@ npm run e2e:levels      # idem, para os níveis de dificuldade e promoção
 Para rodar o mesmo teste ponta a ponta no app empacotado (depois de `npm run dist`), no PowerShell:
 
 ```powershell
-$env:E2E_EXE = "$PWD\release\win-unpacked\Karaoke Studio.exe"; node scripts/e2e.mjs
+$env:E2E_EXE = "$PWD\release\win-unpacked\Edie Music Show.exe"; node scripts/e2e.mjs
 ```
 
 `npm test` cobre: parser de nomes, scanner (subpastas, pares, órfãos, arquivos inválidos), banco

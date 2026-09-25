@@ -1,8 +1,8 @@
 {
   "name": "karaoke-studio",
-  "productName": "Karaoke Studio",
+  "productName": "Edie Music Show",
   "version": "0.1.0",
-  "description": "Aplicativo de karaokê MP3+G (Fase 1: fundação + player)",
+  "description": "Edie Music Show — aplicativo de karaokê MP3+G (Electron/React/TypeScript)",
   "private": true,
   "type": "module",
   "license": "UNLICENSED",
@@ -56,8 +56,8 @@
     "esbuild@0.28.2": true
   },
   "build": {
-    "appId": "com.karaokestudio.app",
-    "productName": "Karaoke Studio",
+    "appId": "com.ediemusicshow.app",
+    "productName": "Edie Music Show",
     "directories": {
       "output": "release"
     },
