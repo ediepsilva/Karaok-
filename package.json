@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fixtures": "tsx scripts/generate-fixtures.ts",
-    "e2e": "npm run build && node scripts/e2e.mjs"
+    "e2e": "npm run build && node scripts/e2e.mjs",
+    "e2e:voice": "npm run build && node scripts/e2e-voice.mjs"
   },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",

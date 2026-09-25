@@ -17,6 +17,8 @@ import {
   createTrustedOrigin,
   installPermissionPolicy
 } from '../src/main/permissions'
+import { MicGate } from '../src/main/mic-gate'
+import { isAudioOnly } from '../src/main/permissions'
 import { memoryLogger } from './helpers'
 
 const run = (actions: CameraAction[], from: CameraState = initialCameraState()): CameraState =>
@@ -169,7 +171,12 @@ describe('política de permissões do main', () => {
       setPermissionCheckHandler: (h: typeof check) => (check = h)
     }
     const logger = memoryLogger()
-    installPermissionPolicy(fakeSession as never, createTrustedOrigin(undefined), logger)
+    installPermissionPolicy(
+      fakeSession as never,
+      createTrustedOrigin(undefined),
+      logger,
+      new MicGate()
+    )
 
     const ask = (
       permission: string,
@@ -199,5 +206,100 @@ describe('política de permissões do main', () => {
     expect(check({}, 'media', 'https://evil.example', { mediaType: 'video' })).toBe(false)
     expect(check({}, 'fullscreen', 'file:///', {})).toBe(true)
     expect(check({}, 'clipboard-read', 'file:///', {})).toBe(false)
+  })
+})
+
+describe('trava do microfone (acesso restrito)', () => {
+  function setup(now = { t: 0 }) {
+    let request: (...a: unknown[]) => void = () => {}
+    let check: (...a: unknown[]) => boolean = () => false
+    const fakeSession = {
+      setPermissionRequestHandler: (h: typeof request) => (request = h),
+      setPermissionCheckHandler: (h: typeof check) => (check = h)
+    }
+    const gate = new MicGate(() => now.t, 8000)
+    const logger = memoryLogger()
+    installPermissionPolicy(fakeSession as never, createTrustedOrigin(undefined), logger, gate)
+    const ask = (mediaTypes: string[], url = 'file:///app/index.html'): boolean => {
+      let result = false
+      request({}, 'media', (g: boolean) => (result = g), { requestingUrl: url, mediaTypes })
+      return result
+    }
+    return { gate, logger, ask, check, now }
+  }
+
+  it('reconhece pedidos só de áudio (nunca áudio + vídeo)', () => {
+    expect(isAudioOnly(['audio'])).toBe(true)
+    expect(isAudioOnly(['audio', 'video'])).toBe(false)
+    expect(isAudioOnly(['video'])).toBe(false)
+    expect(isAudioOnly([])).toBe(false)
+    expect(isAudioOnly(undefined)).toBe(false)
+  })
+
+  it('sem armar a trava, o microfone é negado (e a negação é registrada)', () => {
+    const { ask, logger } = setup()
+    expect(ask(['audio'])).toBe(false)
+    expect(logger.entries.some((e) => e.level === 'WARN' && e.message === 'Permissão negada')).toBe(
+      true
+    )
+  })
+
+  it('armada, concede UM pedido de áudio; o seguinte exige nova armação', () => {
+    const { ask, gate, logger } = setup()
+    gate.arm()
+    expect(ask(['audio'])).toBe(true)
+    expect(ask(['audio'])).toBe(false)
+    gate.arm()
+    expect(ask(['audio'])).toBe(true)
+    expect(
+      logger.entries.filter((e) => e.message.startsWith('Permissão de microfone concedida'))
+    ).toHaveLength(2)
+  })
+
+  it('a armação expira depois de alguns segundos', () => {
+    const { ask, gate, now } = setup()
+    gate.arm()
+    now.t = 7999
+    expect(gate.armed).toBe(true)
+    now.t = 8001
+    expect(gate.armed).toBe(false)
+    expect(ask(['audio'])).toBe(false)
+  })
+
+  it('armada, ainda nega áudio+vídeo, origem externa e outras permissões', () => {
+    const { ask, gate } = setup()
+    gate.arm()
+    expect(ask(['audio', 'video'])).toBe(false)
+    expect(ask(['audio'], 'https://evil.example/')).toBe(false)
+    expect(gate.armed).toBe(true) // negações não gastam a armação
+    expect(ask(['audio'])).toBe(true)
+  })
+
+  it('a câmera continua liberada sem a trava e não consome a armação do microfone', () => {
+    const { ask, gate } = setup()
+    gate.arm()
+    expect(ask(['video'])).toBe(true)
+    expect(gate.armed).toBe(true)
+  })
+
+  it('consulta de dispositivos de áudio só enquanto armada ou capturando', () => {
+    const { check, gate } = setup()
+    const audioCheck = (): boolean => check({}, 'media', 'file:///', { mediaType: 'audio' })
+    expect(audioCheck()).toBe(false)
+    gate.arm()
+    expect(audioCheck()).toBe(true)
+    gate.consumeArm()
+    expect(audioCheck()).toBe(false)
+    gate.setActive(true)
+    expect(audioCheck()).toBe(true)
+    gate.setActive(false)
+    expect(audioCheck()).toBe(false)
+  })
+
+  it('a trava lembra se o microfone está ativo', () => {
+    const gate = new MicGate()
+    expect(gate.isActive).toBe(false)
+    gate.setActive(true)
+    expect(gate.isActive).toBe(true)
   })
 })
