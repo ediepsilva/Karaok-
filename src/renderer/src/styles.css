@@ -719,9 +719,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding-right: 4px;
+  /* Sem altura/scroll próprios: quem rola é o .player-extra (ver PlayerPanel), senão o painel
+     de voz ganha um segundo scroll aninhado e conteúdo (como o seletor de nível) some de vista
+     sem aviso quando algo abaixo pede foco. Um scroll só, mais previsível. */
 }
 
 .voice-row {

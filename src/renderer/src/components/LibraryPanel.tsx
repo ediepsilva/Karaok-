@@ -30,7 +30,7 @@ export function LibraryPanel({
         <input
           type="search"
           className="search"
-          placeholder="Pesquisar título, artista, gênero ou código"
+          placeholder="Buscar título, artista ou código"
           aria-label="Pesquisar música ou artista"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

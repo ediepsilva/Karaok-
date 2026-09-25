@@ -176,15 +176,17 @@ export function PlayerPanel({
       </div>
 
       {/* CDG e controles de reprodução ficam sempre visíveis acima; câmera e avaliação vocal
-          rolam nesta área própria, sem nunca espremer o CDG (Fase 1, correção pós-teste manual). */}
+          rolam nesta área própria, sem nunca espremer o CDG (Fase 1, correção pós-teste manual).
+          Avaliação vocal vem antes da câmera: o nível precisa ser escolhido antes de cantar, e é
+          o item mais provável de precisar de atenção logo ao abrir o painel (consolidação). */}
       <div className="player-extra" data-testid="player-extra">
-        <CameraControls camera={camera} />
         <VoicePanel
           voice={voice}
           melody={melody}
           celebration={celebration}
           evaluationLevel={evaluationLevel}
         />
+        <CameraControls camera={camera} />
       </div>
     </section>
   )
