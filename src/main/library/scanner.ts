@@ -1,6 +1,7 @@
 import { open, readdir, stat } from 'node:fs/promises'
 import { basename, extname, join, parse, posix } from 'node:path'
 import type { ImportIssue, SongSource } from '@shared/types'
+import { parseSongName } from './filename'
 import { listZip, ZipFormatError } from './zip-reader'
 
 export interface SongPair {
@@ -11,6 +12,9 @@ export interface SongPair {
   cdgPath: string
   zipMp3Entry: string
   zipCdgEntry: string
+  /** MIDI/KAR ao lado da música (arquivo) ou dentro do ZIP (nome da entrada); vazio se não há. */
+  melodyPath: string
+  melodyEntry: string
   /** Duração estimada (segundos): o CDG tem 300 pacotes de 24 bytes por segundo. */
   duration: number
   folderName: string
@@ -28,8 +32,15 @@ export const CDG_BYTES_PER_SECOND = 7200
 interface DirEntries {
   mp3: Map<string, string>
   cdg: Map<string, string>
+  melody: Map<string, string>
   zip: string[]
 }
+
+/** Extensões de melodia de referência. Se houver .kar e .mid do mesmo nome, .kar vence (traz letra). */
+export const MELODY_EXTENSIONS = ['.kar', '.mid', '.midi'] as const
+const isMelodyExt = (ext: string): boolean => (MELODY_EXTENSIONS as readonly string[]).includes(ext)
+const melodyRank = (name: string): number =>
+  MELODY_EXTENSIONS.indexOf(extname(name).toLowerCase() as (typeof MELODY_EXTENSIONS)[number])
 
 /** Verifica cabeçalho de MP3: tag ID3 ou sincronismo de frame MPEG. */
 export async function looksLikeMp3(path: string): Promise<boolean> {
@@ -49,17 +60,25 @@ export async function looksLikeMp3(path: string): Promise<boolean> {
 const isSafeEntryName = (name: string): boolean =>
   !name.startsWith('/') && !/^[A-Za-z]:/.test(name) && !name.split(/[\\/]/).includes('..')
 
+/** Prefere o nome do MP3 dentro do ZIP se só ele permitir identificar o artista. */
+export function chooseZipBaseName(zipName: string, innerName: string): string {
+  if (parseSongName(zipName).artist) return zipName
+  return parseSongName(innerName).artist ? innerName : zipName
+}
+
 /** Procura um par NOME.mp3 + NOME.cdg (mesma pasta interna) dentro do ZIP. */
 async function scanZip(zipPath: string, folderName: string, result: ScanResult): Promise<void> {
   try {
     const entries = (await listZip(zipPath)).filter((e) => isSafeEntryName(e.name))
     const mp3 = new Map<string, (typeof entries)[number]>()
     const cdg = new Map<string, (typeof entries)[number]>()
+    const melodies: (typeof entries)[number][] = []
     for (const entry of entries) {
       const key = posix.join(posix.dirname(entry.name), parse(entry.name).name).toLowerCase()
       const ext = extname(entry.name).toLowerCase()
       if (ext === '.mp3') mp3.set(key, entry)
       else if (ext === '.cdg') cdg.set(key, entry)
+      else if (isMelodyExt(ext)) melodies.push(entry)
     }
     for (const [key, mp3Entry] of [...mp3].sort(([a], [b]) => a.localeCompare(b))) {
       const cdgEntry = cdg.get(key)
@@ -68,13 +87,26 @@ async function scanZip(zipPath: string, folderName: string, result: ScanResult):
         result.issues.push({ path: zipPath, reason: 'ZIP com MP3 vazio ou CDG vazio/truncado' })
         return
       }
+      // Melodia: prefere o MIDI/KAR de mesmo nome do MP3; senão, o primeiro (por .kar > .mid).
+      const mp3Key = posix
+        .join(posix.dirname(mp3Entry.name), parse(mp3Entry.name).name)
+        .toLowerCase()
+      const ranked = [...melodies].sort((a, b) => melodyRank(a.name) - melodyRank(b.name))
+      const melody =
+        ranked.find(
+          (m) => posix.join(posix.dirname(m.name), parse(m.name).name).toLowerCase() === mp3Key
+        ) ?? ranked[0]
       result.pairs.push({
-        baseName: parse(zipPath).name,
+        // O nome do ZIP costuma vir de lojas ("Artista_Titulo_123"); o do MP3 interno costuma ter
+        // "Artista - Título". Usa o interno quando só ele permite identificar o artista.
+        baseName: chooseZipBaseName(parse(zipPath).name, parse(mp3Entry.name).name),
         source: 'zip',
         mp3Path: zipPath,
         cdgPath: zipPath,
         zipMp3Entry: mp3Entry.name,
         zipCdgEntry: cdgEntry.name,
+        melodyPath: '',
+        melodyEntry: melody?.name ?? '',
         duration: Math.round(cdgEntry.size / CDG_BYTES_PER_SECOND),
         folderName
       })
@@ -109,7 +141,7 @@ export async function scanFolder(root: string): Promise<ScanResult> {
       continue
     }
 
-    const group: DirEntries = { mp3: new Map(), cdg: new Map(), zip: [] }
+    const group: DirEntries = { mp3: new Map(), cdg: new Map(), melody: new Map(), zip: [] }
     for (const entry of entries) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
@@ -121,7 +153,10 @@ export async function scanFolder(root: string): Promise<ScanResult> {
       const key = parse(entry.name).name.toLowerCase()
       if (ext === '.mp3') group.mp3.set(key, full)
       else if (ext === '.cdg') group.cdg.set(key, full)
-      else if (ext === '.zip') group.zip.push(full)
+      else if (isMelodyExt(ext)) {
+        const current = group.melody.get(key)
+        if (!current || melodyRank(full) < melodyRank(current)) group.melody.set(key, full)
+      } else if (ext === '.zip') group.zip.push(full)
     }
 
     for (const [key, mp3Path] of group.mp3) {
@@ -147,6 +182,8 @@ export async function scanFolder(root: string): Promise<ScanResult> {
           cdgPath,
           zipMp3Entry: '',
           zipCdgEntry: '',
+          melodyPath: group.melody.get(key) ?? '',
+          melodyEntry: '',
           duration: Math.round(cdgStat.size / CDG_BYTES_PER_SECOND),
           folderName: basename(dir)
         })

@@ -76,5 +76,19 @@ export const migrations: Migration[] = [
         last_scan TEXT
       );
     `
+  },
+  {
+    version: 3,
+    name: 'melody sidecar (midi/kar) and chosen melody track',
+    sql: `
+      ALTER TABLE songs ADD COLUMN melody_path  TEXT NOT NULL DEFAULT '';
+      ALTER TABLE songs ADD COLUMN melody_entry TEXT NOT NULL DEFAULT '';
+
+      CREATE TABLE melody_choices (
+        song_id     INTEGER PRIMARY KEY REFERENCES songs (id) ON DELETE CASCADE,
+        track_index INTEGER NOT NULL,
+        updated_at  TEXT    NOT NULL
+      );
+    `
   }
 ]

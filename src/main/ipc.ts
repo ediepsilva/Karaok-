@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron'
 import type { AppInfo, IpcResult, LogLevel } from '@shared/types'
 import { IPC } from '@shared/ipc-channels'
 import type { LibraryService } from './library/library-service'
+import type { MelodyService } from './melody/melody-service'
 import type { QueueService } from './library/queue-service'
 import type { Logger } from './logger'
 import type { MicGate } from './mic-gate'
@@ -9,6 +10,7 @@ import type { MicGate } from './mic-gate'
 export interface IpcDeps {
   library: LibraryService
   queue: QueueService
+  melody: MelodyService
   micGate: MicGate
   logger: Logger
   info: AppInfo
@@ -38,7 +40,7 @@ function validId(value: unknown): number {
   return value
 }
 
-export function registerIpc({ library, queue, micGate, logger, info }: IpcDeps): void {
+export function registerIpc({ library, queue, melody, micGate, logger, info }: IpcDeps): void {
   const handle = <T>(channel: string, fn: (...args: unknown[]) => T | Promise<T>): void => {
     ipcMain.handle(channel, (_event, ...args: unknown[]) =>
       guard(logger, channel, () => fn(...args))
@@ -101,6 +103,10 @@ export function registerIpc({ library, queue, micGate, logger, info }: IpcDeps):
     queue.clearHistory()
     return null
   })
+
+  // Melodia de referência (MIDI/KAR ao lado da música)
+  handle(IPC.melodyGet, (songId) => melody.get(validId(songId)))
+  handle(IPC.melodySetTrack, (songId, trackIndex) => melody.setTrack(validId(songId), trackIndex))
 
   // Microfone: armar a trava e informar o estado (a permissão em si é decidida em permissions.ts)
   handle(IPC.voiceArm, () => {

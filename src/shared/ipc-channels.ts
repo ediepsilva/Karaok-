@@ -19,6 +19,8 @@ export const IPC = {
   queueClear: 'queue:clear',
   historyList: 'history:list',
   historyClear: 'history:clear',
+  melodyGet: 'melody:get',
+  melodySetTrack: 'melody:set-track',
   voiceArm: 'voice:arm',
   voiceActive: 'voice:active',
   log: 'log:write'

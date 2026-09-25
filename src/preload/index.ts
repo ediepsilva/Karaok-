@@ -31,6 +31,10 @@ const api: KaraokeApi = {
     list: (limit) => ipcRenderer.invoke(IPC.historyList, limit),
     clear: () => ipcRenderer.invoke(IPC.historyClear)
   },
+  melody: {
+    get: (songId) => ipcRenderer.invoke(IPC.melodyGet, songId),
+    setTrack: (songId, trackIndex) => ipcRenderer.invoke(IPC.melodySetTrack, songId, trackIndex)
+  },
   voice: {
     arm: () => ipcRenderer.invoke(IPC.voiceArm),
     setActive: (active) => ipcRenderer.invoke(IPC.voiceActive, active)

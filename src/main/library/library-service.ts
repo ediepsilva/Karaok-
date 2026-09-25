@@ -83,10 +83,12 @@ export class LibraryService {
     for (const path of scan.mp3WithoutCdg) this.logger.info('MP3 sem CDG ignorado', { path })
     for (const path of scan.cdgWithoutMp3) this.logger.info('CDG sem MP3 ignorado', { path })
     const foundInZip = scan.pairs.filter((p) => p.source === 'zip').length
+    const withMelody = scan.pairs.filter((p) => p.melodyPath || p.melodyEntry).length
     this.logger.info('Importação concluída', {
       folder: root,
       found: scan.pairs.length,
       foundInZip,
+      withMelody,
       added,
       duplicates,
       mp3WithoutCdg: scan.mp3WithoutCdg.length,
@@ -98,6 +100,7 @@ export class LibraryService {
       folder: root,
       found: scan.pairs.length,
       foundInZip,
+      withMelody,
       added,
       duplicates,
       mp3WithoutCdg: scan.mp3WithoutCdg.length,
@@ -178,16 +181,19 @@ export class LibraryService {
   private store(scan: ScanResult): { added: number; duplicates: number } {
     return this.repo.addMany(
       scan.pairs.map((pair) => {
-        const { artist, title } = parseSongName(pair.baseName)
+        const { artist, title, code } = parseSongName(pair.baseName)
         return {
           title,
           artist,
+          code,
           mp3Path: pair.mp3Path,
           cdgPath: pair.cdgPath,
           duration: pair.duration,
           source: pair.source,
           zipMp3Entry: pair.zipMp3Entry,
-          zipCdgEntry: pair.zipCdgEntry
+          zipCdgEntry: pair.zipCdgEntry,
+          melodyPath: pair.melodyPath,
+          melodyEntry: pair.melodyEntry
         }
       })
     )

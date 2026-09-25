@@ -11,6 +11,7 @@ import { LibraryService } from './library/library-service'
 import { QueueService } from './library/queue-service'
 import { createFileLogger } from './logger'
 import { handleMediaProtocol, registerMediaScheme } from './media-protocol'
+import { MelodyService } from './melody/melody-service'
 import { MicGate } from './mic-gate'
 import { createTrustedOrigin, installPermissionPolicy } from './permissions'
 
@@ -107,6 +108,7 @@ async function boot(): Promise<void> {
   registerIpc({
     library: new LibraryService(repo, new FolderRepository(database), logger),
     queue: new QueueService(new QueueRepository(database), repo, logger),
+    melody: new MelodyService(repo, logger),
     micGate,
     logger,
     info

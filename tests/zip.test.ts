@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { buildFixtureCdg } from '../scripts/lib/fixture-media'
 import { buildZip } from '../scripts/lib/zip-builder'
 import { openMedia, ZipEntryCache } from '../src/main/library/media-source'
-import { scanFolder } from '../src/main/library/scanner'
+import { parseSongName } from '../src/main/library/filename'
+import { chooseZipBaseName, scanFolder } from '../src/main/library/scanner'
 import { listZip, readZipEntry, ZipFormatError } from '../src/main/library/zip-reader'
 import { FAKE_MP3, makeTempDir, writeFile } from './helpers'
 
@@ -140,6 +141,39 @@ describe('scanner com ZIP', () => {
     )
     const result = await scanFolder(root)
     expect(result.pairs.map((p) => p.source).sort()).toEqual(['files', 'zip'])
+  })
+})
+
+describe('nome da música dentro do ZIP', () => {
+  it('usa o nome do MP3 interno quando o nome do ZIP não separa artista e título', () => {
+    expect(
+      chooseZipBaseName(
+        'Raca_Negra_Cheia_de_manias_(versao_2019)(Karaoke_MP3+CDG)_10802867',
+        'Raca Negra - Cheia de manias (versao 2019) - 80026'
+      )
+    ).toBe('Raca Negra - Cheia de manias (versao 2019) - 80026')
+  })
+
+  it('mantém o nome do ZIP se ele já separa artista e título, ou se o interno também não separa', () => {
+    expect(chooseZipBaseName('Artista - Musica', 'faixa01')).toBe('Artista - Musica')
+    expect(chooseZipBaseName('zip qualquer', 'faixa01')).toBe('zip qualquer')
+  })
+
+  it('na importação, o ZIP vira artista, título e código corretos', async () => {
+    const root = makeTempDir()
+    writeFileSync(
+      join(root, 'Raca_Negra_Cheia_de_manias_(Karaoke_MP3+CDG)_10802867.zip'),
+      buildZip([
+        { name: 'Raca Negra - Cheia de manias - 80026.mp3', data: FAKE_MP3 },
+        { name: 'Raca Negra - Cheia de manias - 80026.cdg', data: CDG }
+      ])
+    )
+    const [pair] = (await scanFolder(root)).pairs
+    expect(parseSongName(pair!.baseName)).toEqual({
+      artist: 'Raca Negra',
+      title: 'Cheia de manias',
+      code: '80026'
+    })
   })
 })
 

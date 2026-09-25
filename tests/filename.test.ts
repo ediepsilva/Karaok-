@@ -19,9 +19,26 @@ describe('parseSongName', () => {
   it('descarta código de catálogo inicial', () => {
     expect(parseSongName('SC1234-01 - Legião Urbana - Tempo Perdido')).toEqual({
       artist: 'Legião Urbana',
-      title: 'Tempo Perdido'
+      title: 'Tempo Perdido',
+      code: 'SC1234-01'
     })
-    expect(parseSongName('12345 - Djavan - Oceano')).toEqual({ artist: 'Djavan', title: 'Oceano' })
+    expect(parseSongName('12345 - Djavan - Oceano')).toEqual({
+      artist: 'Djavan',
+      title: 'Oceano',
+      code: '12345'
+    })
+  })
+
+  it('separa o código numérico do FIM do nome (padrão de lojas de karaokê)', () => {
+    expect(parseSongName('Raca Negra - Cheia de manias (versao 2019) - 80026')).toEqual({
+      artist: 'Raca Negra',
+      title: 'Cheia de manias (versao 2019)',
+      code: '80026'
+    })
+    // só dois pedaços: o número faz parte do título
+    expect(parseSongName('Banda - 1979')).toEqual({ artist: 'Banda', title: '1979' })
+    // número curto no fim não é código
+    expect(parseSongName('A - B - 12')).toEqual({ artist: 'A', title: 'B - 12' })
   })
 
   it('sem separador, usa o nome do arquivo como título', () => {

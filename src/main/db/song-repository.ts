@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite'
-import type { LibraryFilter, Song, SongMetadata, SongSource } from '@shared/types'
+import type { LibraryFilter, MelodyFormat, Song, SongMetadata, SongSource } from '@shared/types'
 import { normalizeForSearch } from '../library/filename'
 
 export interface NewSong {
@@ -14,6 +14,18 @@ export interface NewSong {
   source?: SongSource
   zipMp3Entry?: string
   zipCdgEntry?: string
+  /** MIDI/KAR ao lado da música: caminho do arquivo, ou nome da entrada dentro do ZIP. */
+  melodyPath?: string
+  melodyEntry?: string
+}
+
+/** Onde está a melodia de referência (MIDI/KAR) de uma música. */
+export interface MelodyLocation {
+  /** 'files': melodyPath é um arquivo; 'zip': melodyEntry é uma entrada de mp3Path. */
+  source: SongSource
+  zipPath: string
+  melodyPath: string
+  melodyEntry: string
 }
 
 /** Dados extras, só do main, para localizar a mídia de uma música dentro de um ZIP. */
@@ -42,6 +54,8 @@ interface SongRow {
   last_played: string | null
   play_count: number
   favorite: number
+  melody_path: string
+  melody_entry: string
 }
 
 function toSong(row: SongRow): Song {
@@ -59,8 +73,15 @@ function toSong(row: SongRow): Song {
     dateAdded: row.date_added,
     lastPlayed: row.last_played,
     playCount: row.play_count,
-    favorite: row.favorite === 1
+    favorite: row.favorite === 1,
+    hasMelody: row.melody_path !== '' || row.melody_entry !== '',
+    melodyFormat: melodyFormatOf(row.melody_path || row.melody_entry)
   }
+}
+
+function melodyFormatOf(name: string): MelodyFormat | null {
+  if (!name) return null
+  return /.kar$/i.test(name) ? 'kar' : 'midi'
 }
 
 const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (c) => `\\${c}`)
@@ -78,9 +99,14 @@ export class SongRepository {
     const insert = this.db.prepare(`
       INSERT INTO songs (title, artist, genre, language, code, mp3_path, cdg_path, duration,
                          date_added, title_norm, artist_norm, genre_norm, code_norm,
-                         source, zip_mp3_entry, zip_cdg_entry)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         source, zip_mp3_entry, zip_cdg_entry, melody_path, melody_entry)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT DO NOTHING`)
+    // Música já cadastrada: se apareceu (ou mudou) um MIDI/KAR ao lado, atualiza só a melodia.
+    const relink = this.db.prepare(
+      `UPDATE songs SET melody_path = ?, melody_entry = ?
+       WHERE mp3_path = ? COLLATE NOCASE AND (melody_path != ? OR melody_entry != ?)`
+    )
     let added = 0
     const now = new Date().toISOString()
     this.db.exec('BEGIN')
@@ -104,9 +130,20 @@ export class SongRepository {
           normalizeForSearch(code),
           s.source ?? 'files',
           s.zipMp3Entry ?? '',
-          s.zipCdgEntry ?? ''
+          s.zipCdgEntry ?? '',
+          s.melodyPath ?? '',
+          s.melodyEntry ?? ''
         )
         added += Number(info.changes)
+        if (Number(info.changes) === 0 && (s.melodyPath || s.melodyEntry)) {
+          relink.run(
+            s.melodyPath ?? '',
+            s.melodyEntry ?? '',
+            s.mp3Path,
+            s.melodyPath ?? '',
+            s.melodyEntry ?? ''
+          )
+        }
       }
       this.db.exec('COMMIT')
     } catch (error) {
@@ -156,6 +193,34 @@ export class SongRepository {
           zipCdgEntry: row.zip_cdg_entry
         }
       : undefined
+  }
+
+  /** Onde está o MIDI/KAR da música, ou undefined se não há. */
+  getMelodyLocation(id: number): MelodyLocation | undefined {
+    const row = this.db.prepare('SELECT * FROM songs WHERE id = ?').get(id) as SongRow | undefined
+    if (!row || (row.melody_path === '' && row.melody_entry === '')) return undefined
+    return {
+      source: row.source,
+      zipPath: row.mp3_path,
+      melodyPath: row.melody_path,
+      melodyEntry: row.melody_entry
+    }
+  }
+
+  getMelodyChoice(songId: number): number | undefined {
+    const row = this.db
+      .prepare('SELECT track_index FROM melody_choices WHERE song_id = ?')
+      .get(songId) as { track_index: number } | undefined
+    return row?.track_index
+  }
+
+  setMelodyChoice(songId: number, trackIndex: number): void {
+    this.db
+      .prepare(
+        `INSERT INTO melody_choices (song_id, track_index, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT (song_id) DO UPDATE SET track_index = excluded.track_index, updated_at = excluded.updated_at`
+      )
+      .run(songId, trackIndex, new Date().toISOString())
   }
 
   count(): number {

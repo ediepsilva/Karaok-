@@ -44,7 +44,12 @@ describe('migração 1 → 2', () => {
     db.exec(`INSERT INTO songs (title, artist, mp3_path, cdg_path, date_added, title_norm, artist_norm)
              VALUES ('Antiga', 'Artista', 'a.mp3', 'a.cdg', 'x', 'antiga', 'artista')`)
     expect(currentVersion(db)).toBe(1)
-    expect(migrate(db)).toBe(2)
+    expect(
+      migrate(
+        db,
+        migrations.filter((m) => m.version <= 2)
+      )
+    ).toBe(2)
     const row = db.prepare('SELECT title, favorite, source, code FROM songs').get() as Record<
       string,
       unknown

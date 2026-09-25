@@ -1,5 +1,7 @@
 /** Tipos compartilhados entre main, preload e renderer. */
 
+export type MelodyFormat = 'midi' | 'kar'
+
 export type SongSource = 'files' | 'zip'
 
 export interface Song {
@@ -19,6 +21,9 @@ export interface Song {
   lastPlayed: string | null
   playCount: number
   favorite: boolean
+  /** Há um arquivo MIDI/KAR ao lado da música (melodia de referência disponível). */
+  hasMelody: boolean
+  melodyFormat: MelodyFormat | null
 }
 
 /** O mínimo que o player precisa para tocar uma música. */
@@ -55,6 +60,8 @@ export interface ImportResult {
   found: number
   /** Quantas dessas estavam dentro de arquivos ZIP. */
   foundInZip: number
+  /** Quantas têm melodia de referência (MIDI/KAR) ao lado ou dentro do ZIP. */
+  withMelody: number
   added: number
   duplicates: number
   mp3WithoutCdg: number
@@ -99,6 +106,40 @@ export interface HistoryEntry {
   artist: string
   singer: string
   playedAt: string
+}
+
+/** Nota esperada pela melodia de referência. */
+export interface ReferenceNote {
+  /** Início (s) no tempo da música. */
+  start: number
+  duration: number
+  /** Número MIDI (69 = A4). */
+  midi: number
+  lyric?: string
+}
+
+export interface MelodyTrackInfo {
+  index: number
+  name: string
+  noteCount: number
+  channels: number[]
+  isDrums: boolean
+  /** Escolhida automaticamente como melhor candidata. */
+  suggested: boolean
+}
+
+/** Melodia de referência de uma música (lida de um MIDI/KAR ao lado dela). */
+export interface MelodyInfo {
+  songId: number
+  format: MelodyFormat
+  fileName: string
+  tracks: MelodyTrackInfo[]
+  selectedTrack: number | null
+  /** true se o usuário escolheu a trilha (senão foi escolha automática). */
+  selectionIsManual: boolean
+  notes: ReferenceNote[]
+  lyricCount: number
+  durationSec: number
 }
 
 export interface AppInfo {
@@ -146,6 +187,11 @@ export interface KaraokeApi {
   history: {
     list(limit?: number): Promise<IpcResult<HistoryEntry[]>>
     clear(): Promise<IpcResult<null>>
+  }
+  melody: {
+    /** Melodia de referência da música, ou null se não há MIDI/KAR. Falhas viram mensagem. */
+    get(songId: number): Promise<IpcResult<MelodyInfo | null>>
+    setTrack(songId: number, trackIndex: number): Promise<IpcResult<MelodyInfo | null>>
   }
   voice: {
     /** Arma a trava do microfone: o próximo pedido de áudio (e só ele) será concedido. */
