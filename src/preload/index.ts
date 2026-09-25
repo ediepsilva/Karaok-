@@ -3,7 +3,10 @@ import { IPC } from '../shared/ipc-channels'
 import type { KaraokeApi } from '../shared/types'
 
 const api: KaraokeApi = {
-  app: { info: () => ipcRenderer.invoke(IPC.appInfo) },
+  app: {
+    info: () => ipcRenderer.invoke(IPC.appInfo),
+    openLogs: () => ipcRenderer.invoke(IPC.appOpenLogs)
+  },
   library: {
     list: (filter) => ipcRenderer.invoke(IPC.libraryList, filter),
     pickFolder: () => ipcRenderer.invoke(IPC.libraryPickFolder),

@@ -1,5 +1,6 @@
 export const IPC = {
   appInfo: 'app:info',
+  appOpenLogs: 'app:open-logs',
   libraryList: 'library:list',
   libraryPickFolder: 'library:pick-folder',
   libraryImportFolder: 'library:import-folder',

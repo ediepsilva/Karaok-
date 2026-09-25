@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AppInfo, IpcResult, LogLevel } from '@shared/types'
 import { IPC } from '@shared/ipc-channels'
 import type { LibraryService } from './library/library-service'
@@ -48,6 +48,11 @@ export function registerIpc({ library, queue, melody, micGate, logger, info }: I
   }
 
   handle(IPC.appInfo, () => info)
+  handle(IPC.appOpenLogs, async () => {
+    const failure = await shell.openPath(info.logDir)
+    if (failure) throw new Error(failure)
+    return null
+  })
 
   // Biblioteca
   handle(IPC.libraryList, (filter) => library.list(filter as never))

@@ -158,7 +158,11 @@ export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; message: string }
 
 export interface KaraokeApi {
-  app: { info(): Promise<IpcResult<AppInfo>> }
+  app: {
+    info(): Promise<IpcResult<AppInfo>>
+    /** Abre a pasta de logs no Explorer. */
+    openLogs(): Promise<IpcResult<null>>
+  }
   library: {
     list(filter?: LibraryFilter): Promise<IpcResult<Song[]>>
     /** Abre o seletor de pasta; devolve o caminho escolhido ou null se cancelado. */

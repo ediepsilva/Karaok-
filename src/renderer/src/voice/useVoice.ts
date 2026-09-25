@@ -119,6 +119,67 @@ interface SessionSlot {
  * Privacidade: o microfone só abre (a) no teste explícito ou (b) durante uma apresentação com a
  * avaliação habilitada, e é liberado ao terminar (pausas longas também liberam).
  */
+interface Telemetry {
+  startedAt: number
+  frames: number
+  sumDb: number
+  sumClarity: number
+  voice: number
+  silence: number
+  noise: number
+  freqs: number[]
+}
+
+const newTelemetry = (): Telemetry => ({
+  startedAt: 0,
+  frames: 0,
+  sumDb: 0,
+  sumClarity: 0,
+  voice: 0,
+  silence: 0,
+  noise: 0,
+  freqs: []
+})
+
+/** Uma linha de log por segundo com nível, estado, pitch e confiança: base para ajustar limiares. */
+function logTelemetry(
+  tele: Telemetry,
+  a: FrameAnalysis,
+  context: 'apresentação' | 'teste',
+  songId: number | undefined
+): void {
+  const now = performance.now()
+  if (tele.startedAt === 0) tele.startedAt = now
+  tele.frames++
+  tele.sumDb += Number.isFinite(a.dbfs) ? a.dbfs : -120
+  tele.sumClarity += a.clarity
+  if (a.state === 'voice') tele.voice++
+  else if (a.state === 'noise') tele.noise++
+  else tele.silence++
+  if (a.state === 'voice' && a.frequency) tele.freqs.push(a.frequency)
+  if (now - tele.startedAt < 1000) return
+  const sorted = [...tele.freqs].sort((x, y) => x - y)
+  const medianFreq = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)]! : null
+  window.api.log('DEBUG', 'Amostra do microfone', {
+    contexto: context,
+    songId,
+    quadros: tele.frames,
+    nivelMedioDb: Number((tele.sumDb / tele.frames).toFixed(1)),
+    pisoRuidoDb: Number.isFinite(a.noiseFloorDb) ? Number(a.noiseFloorDb.toFixed(1)) : null,
+    voz: tele.voice,
+    silencio: tele.silence,
+    ruido: tele.noise,
+    freqMedianaHz: medianFreq === null ? null : Number(medianFreq.toFixed(1)),
+    nota: a.note,
+    confiancaMedia: Number((tele.sumClarity / tele.frames).toFixed(2)),
+    saturou: a.clipping
+  })
+  Object.assign(tele, newTelemetry(), { startedAt: now })
+}
+
+const roundAll = (values: Record<string, number>): Record<string, number> =>
+  Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v.toFixed(3))]))
+
 export function useVoice(input: VoiceInput): VoiceController {
   const { phase, songId, songDurationSec, songTitle, singer, melody, audioRef } = input
   const [prefs, setPrefs] = useState<VoicePrefs>(readPrefs)
@@ -160,6 +221,7 @@ export function useVoice(input: VoiceInput): VoiceController {
   const slotRef = useRef<SessionSlot | null>(null)
   const graceRef = useRef(false)
   const melodyRef = useRef(melody)
+  const teleRef = useRef<Telemetry>(newTelemetry())
 
   useEffect(() => {
     latencyRef.current = latency
@@ -209,6 +271,12 @@ export function useVoice(input: VoiceInput): VoiceController {
       }
 
       const slot = slotRef.current
+      logTelemetry(
+        teleRef.current,
+        a,
+        slot?.running ? 'apresentação' : 'teste',
+        slot?.songId ?? undefined
+      )
       if (slot && slot.running && engine) {
         if (!slot.session) {
           slot.session = new PerformanceSession(
@@ -237,6 +305,7 @@ export function useVoice(input: VoiceInput): VoiceController {
     if (wasActive) void window.api.voice.setActive(false)
     liveRef.current = IDLE_LIVE
     recentRef.current = { flags: new Uint8Array(RECENT_FRAMES), head: 0, count: 0, voiced: 0 }
+    teleRef.current = newTelemetry()
     setMicStatus('off')
     setInfo(null)
     setLive(IDLE_LIVE)
@@ -388,6 +457,16 @@ export function useVoice(input: VoiceInput): VoiceController {
       durationSec: Math.round(finished.summary.durationSec),
       voicedFraction: Number(finished.summary.voicedFraction.toFixed(3)),
       formulaVersion: finished.score.formulaVersion
+    })
+    // Tudo o que gerou a nota, para ajustar os limiares depois (ver docs/TESTE_MANUAL_4A.md).
+    window.api.log('INFO', 'Métricas da avaliação', {
+      songId: slot.songId,
+      summary: roundAll(finished.summary as unknown as Record<string, number>),
+      components: roundAll(finished.score.components as unknown as Record<string, number>),
+      score: finished.score.score,
+      insufficientReason: finished.score.insufficientReason,
+      completedFraction: finished.completedFraction,
+      latency: { ...latencyRef.current, totalMs: Math.round(totalLatencyMs(latencyRef.current)) }
     })
   }, [])
 

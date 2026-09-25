@@ -840,3 +840,48 @@ body {
   color: #8fe3b0;
   border-color: #3f8f66;
 }
+
+.diag-level {
+  height: 14px;
+}
+
+.diag-live {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  background: var(--bg);
+  color: var(--muted, #9aa4b2);
+}
+
+.diag-live.voice {
+  background: #123d2c;
+  color: #4cd0a0;
+}
+
+.diag-live.noise {
+  background: #4a3a10;
+  color: var(--warn);
+}
+
+.metrics {
+  margin-top: 8px;
+}
+
+.metrics table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+.metrics th {
+  text-align: left;
+  font-weight: 400;
+  padding: 2px 8px 2px 0;
+  color: var(--muted, #9aa4b2);
+}
+
+.metrics td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

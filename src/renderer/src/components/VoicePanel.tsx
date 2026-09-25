@@ -2,7 +2,7 @@ import { basicComponents } from '../voice/basic-score'
 import { formatNote } from '../voice/mic-errors'
 import type { ReferenceComponents } from '../voice/reference-score'
 import type { MelodyController } from '../voice/useMelody'
-import type { VoiceController } from '../voice/useVoice'
+import type { VoiceController, VoiceResult } from '../voice/useVoice'
 import { MANUAL_LATENCY_MAX_MS, MANUAL_LATENCY_MIN_MS } from '../voice/voice-config'
 import { MODE_LABELS } from '../voice/reference'
 
@@ -34,7 +34,7 @@ export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
 
   return (
     <div className="voice" data-testid="voice-panel">
-      <details className="voice-details" data-testid="voice-details">
+      <details className="voice-details" data-testid="voice-details" open>
         <summary>
           🎤 Avaliação vocal
           <span
@@ -158,6 +158,15 @@ export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
           )}
 
           <div className="diag" data-testid="voice-diagnostics">
+            <div className={`diag-live ${micOn ? live.state : 'off'}`} data-testid="diag-live">
+              {!micOn
+                ? 'Microfone inativo — aperte “Testar microfone”'
+                : live.state === 'voice'
+                  ? '● CAPTANDO VOZ'
+                  : live.state === 'noise'
+                    ? '● Captando RUÍDO (não é voz)'
+                    : '○ Captando, mas em SILÊNCIO — fale ou cante'}
+            </div>
             <div className="diag-level">
               <div
                 className={`bar${live.clipping ? ' clip' : ''}`}
@@ -197,6 +206,16 @@ export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
               <dd data-testid="diag-fps">{micOn ? live.framesPerSec.toFixed(0) : '—'}</dd>
               <dt>Quadros descartados</dt>
               <dd data-testid="diag-dropped">{micOn ? live.droppedFrames : '—'}</dd>
+              <dt>Registro (logs)</dt>
+              <dd>
+                <button
+                  className="btn small"
+                  data-testid="btn-open-logs"
+                  onClick={() => void window.api.app.openLogs()}
+                >
+                  Abrir pasta de logs
+                </button>
+              </dd>
               <dt>Latência</dt>
               <dd data-testid="diag-latency">
                 {voice.latency.measuredMs !== null
@@ -375,8 +394,46 @@ function ResultCard({
             {Math.round(result.summary.voicedFraction * 100)}% do tempo · maior pausa{' '}
             {result.summary.longestGapSec.toFixed(1)} s
           </p>
+          <MetricsTable result={result} />
         </>
       )}
     </div>
+  )
+}
+
+/** Números medidos que geraram a nota (mesmos valores gravados no log "Métricas da avaliação"). */
+function MetricsTable({ result }: { result: VoiceResult }): React.JSX.Element {
+  const s = result.summary
+  const p = (x: number): string => `${(x * 100).toFixed(1)}%`
+  const rows: [string, string][] = [
+    ['Tempo analisado', `${s.durationSec.toFixed(1)} s`],
+    ['Tempo com voz', `${s.voicedSec.toFixed(1)} s (${p(s.voicedFraction)})`],
+    ['Tempo em silêncio', p(s.silenceFraction)],
+    ['Tempo em ruído', p(s.noiseFraction)],
+    ['Maior pausa sem voz', `${s.longestGapSec.toFixed(1)} s`],
+    ['Frases (trechos contínuos de voz)', String(s.voicedRunCount)],
+    [
+      'Duração média / maior frase',
+      `${s.meanRunSec.toFixed(1)} s / ${s.longestRunSec.toFixed(1)} s`
+    ],
+    ['Estabilidade do pitch', p(s.stableFraction)],
+    ['Nível médio da voz', `${s.meanVoiceDb.toFixed(1)} dBFS`],
+    ['Ruído ambiente', `${s.ambientNoiseDb.toFixed(1)} dBFS`],
+    ['Saturação (clipping)', p(s.clippingFraction)]
+  ]
+  return (
+    <details className="metrics" data-testid="voice-metrics" open>
+      <summary>Métricas que geraram a nota</summary>
+      <table>
+        <tbody>
+          {rows.map(([name, value]) => (
+            <tr key={name}>
+              <th scope="row">{name}</th>
+              <td>{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   )
 }

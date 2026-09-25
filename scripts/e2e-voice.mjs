@@ -159,6 +159,11 @@ try {
     Math.abs(freq - 440) <= 4,
     `${freq} Hz`
   )
+  check(
+    'V7b. indicador grande informa que está captando voz',
+    /CAPTANDO VOZ/.test(await text(page, 'diag-live')),
+    await text(page, 'diag-live')
+  )
   check('V8. mostra a nota musical aproximada (A4)', /^A4/.test(note), note)
   check('V9. confiança alta em tom limpo (≥ 90%)', clarity >= 90, `${clarity}%`)
   check(
@@ -253,6 +258,14 @@ try {
     'V23. o resultado avisa que NÃO mede se cantou as notas certas',
     /NÃO mede se você cantou as notas certas/.test(await text(page, 'voice-disclaimer'))
   )
+  const metricsText = await text(page, 'voice-metrics')
+  check(
+    'V23b. o resultado mostra as métricas que geraram a nota',
+    /Tempo com voz/.test(metricsText) &&
+      /Estabilidade do pitch/.test(metricsText) &&
+      /Ruído ambiente/.test(metricsText) &&
+      /Nível médio da voz/.test(metricsText)
+  )
   await waitText(page, 'mic-status', /INATIVO/, 15000)
   check('V24. ao terminar a apresentação, o microfone é liberado', !(await micActive(page)))
 
@@ -291,6 +304,12 @@ try {
       /Microfone ativo/.test(log) &&
       /Microfone liberado/.test(log) &&
       /Avaliação concluída/.test(log)
+  )
+  check(
+    'V27b. log tem telemetria por segundo e as métricas da avaliação (para ajustar limiares)',
+    (log.match(/Amostra do microfone/g) ?? []).length >= 10 &&
+      /"contexto":"apresentação"/.test(log) &&
+      /Métricas da avaliação.*"summary":{.*"components":{/.test(log)
   )
   const active = (log.match(/Microfone ativo/g) ?? []).length
   const released = (log.match(/Microfone liberado/g) ?? []).length
