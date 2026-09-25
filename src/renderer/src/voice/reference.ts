@@ -1,25 +1,17 @@
 /**
- * Contratos para a futura AVALIAÇÃO COM MELODIA DE REFERÊNCIA (Fase 4B: MIDI/KAR).
- *
- * Na Fase 4A só existe o modo "basic". Estes tipos NÃO implementam comparação com melodia:
- * apenas fixam o formato dos dados para que a 4B se encaixe sem reescrever a captura.
+ * Contratos da avaliação: os dois modos e a origem da melodia de referência (MIDI/KAR, Fase 4B).
+ * A comparação com a melodia está em reference-score.ts; a avaliação básica, em basic-score.ts.
  */
+
+import type { ReferenceNote } from '@shared/types'
+
+export type { ReferenceNote }
 
 export type EvaluationMode = 'reference' | 'basic'
 
 export const MODE_LABELS: Record<EvaluationMode, string> = {
   reference: 'AVALIAÇÃO COM MELODIA DE REFERÊNCIA',
   basic: 'AVALIAÇÃO BÁSICA'
-}
-
-/** Nota esperada pela melodia de referência. */
-export interface ReferenceNote {
-  /** Início (s) no tempo da música. */
-  start: number
-  duration: number
-  /** Número MIDI (69 = A4). */
-  midi: number
-  lyric?: string
 }
 
 export interface ReferenceMelody {

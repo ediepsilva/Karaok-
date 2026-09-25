@@ -1,11 +1,14 @@
 import { basicComponents } from '../voice/basic-score'
 import { formatNote } from '../voice/mic-errors'
+import type { ReferenceComponents } from '../voice/reference-score'
+import type { MelodyController } from '../voice/useMelody'
 import type { VoiceController } from '../voice/useVoice'
 import { MANUAL_LATENCY_MAX_MS, MANUAL_LATENCY_MIN_MS } from '../voice/voice-config'
 import { MODE_LABELS } from '../voice/reference'
 
 interface Props {
   voice: VoiceController
+  melody: MelodyController
 }
 
 const STATE_LABEL = { silence: 'silêncio', noise: 'ruído', voice: 'voz', idle: '—' } as const
@@ -22,7 +25,7 @@ const pct = (v: number): string => `${Math.round(v * 100)}%`
 const levelWidth = (dbfs: number): string =>
   `${Math.max(0, Math.min(100, ((dbfs + 70) / 70) * 100))}%`
 
-export function VoicePanel({ voice }: Props): React.JSX.Element {
+export function VoicePanel({ voice, melody }: Props): React.JSX.Element {
   const { live, prefs, info } = voice
   const micOn = voice.micStatus === 'on'
   const selected = voice.devices.some((d) => d.id === (info?.deviceId ?? prefs.deviceId))
@@ -57,12 +60,55 @@ export function VoicePanel({ voice }: Props): React.JSX.Element {
             />
             Avaliar minha apresentação
           </label>
-          <p className="hint" data-testid="voice-mode-label">
-            <strong>{MODE_LABELS.basic}</strong> (modo recreativo). Mede atividade vocal,
-            estabilidade e continuidade. <strong>Não mede afinação</strong>: sem uma melodia de
-            referência não há como saber se você cantou as notas certas. O microfone só liga durante
-            a apresentação e é liberado ao terminar.
-          </p>
+          {melody.info && melody.info.notes.length > 0 ? (
+            <div className="hint" data-testid="voice-mode-label">
+              <strong>{MODE_LABELS.reference}</strong>
+              <div data-testid="melody-status">
+                Melodia: {melody.info.fileName} ({melody.info.format.toUpperCase()}) ·{' '}
+                {melody.info.notes.length} notas
+                {melody.info.lyricCount > 0 && ` · ${melody.info.lyricCount} sílabas de letra`}.
+                Compara a sua voz com a melodia (afinação, notas, ritmo, duração, entrada das
+                frases, consistência e % cantado). A oitava é ignorada.
+              </div>
+              {melody.info.tracks.length > 1 && (
+                <label className="field inline">
+                  Trilha da melodia
+                  <select
+                    className="select"
+                    data-testid="melody-track"
+                    value={melody.info.selectedTrack ?? ''}
+                    onChange={(e) => void melody.setTrack(Number(e.target.value))}
+                  >
+                    {melody.info.tracks
+                      .filter((t) => !t.isDrums)
+                      .map((t) => (
+                        <option key={t.index} value={t.index}>
+                          {t.name || `Trilha ${t.index}`} ({t.noteCount} notas)
+                          {t.suggested ? ' — sugerida' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          ) : (
+            <div className="hint" data-testid="voice-mode-label">
+              <strong>{MODE_LABELS.basic}</strong> (modo recreativo). Mede atividade vocal,
+              estabilidade e continuidade. <strong>Não mede afinação</strong>: sem uma melodia de
+              referência (arquivo MIDI/KAR ao lado da música) não há como saber se você cantou as
+              notas certas. O microfone só liga durante a apresentação e é liberado ao terminar.
+              {melody.info !== null && melody.info.notes.length === 0 && (
+                <div className="warn-text" data-testid="melody-unusable">
+                  O arquivo {melody.info.fileName} não tem uma trilha utilizável como melodia.
+                </div>
+              )}
+              {melody.error && (
+                <div className="warn-text" data-testid="melody-error">
+                  {melody.error} Usando a avaliação básica.
+                </div>
+              )}
+            </div>
+          )}
           <p className="hint" data-testid="headphones-tip">
             Para uma avaliação mais precisa, recomendamos o uso de fones de ouvido (evita que o
             microfone capte a música). Não é obrigatório.
@@ -205,55 +251,131 @@ export function VoicePanel({ voice }: Props): React.JSX.Element {
         </div>
       </details>
 
-      {voice.result && (
-        <div className="voice-result" data-testid="voice-result">
-          <div className="voice-result-head">
-            <div>
-              <div className="mode-label" data-testid="voice-result-label">
-                {voice.result.score.label}
-              </div>
-              <div className="hint">
-                {voice.result.songTitle}
-                {voice.result.singer ? ` · ${voice.result.singer}` : ''}
-                {voice.result.completedFraction !== null &&
-                  ` · ${Math.round(voice.result.completedFraction * 100)}% da música`}
-              </div>
-            </div>
-            <div className="score" data-testid="voice-score">
-              {voice.result.score.score ?? '—'}
-              {voice.result.score.score !== null && <small>/100</small>}
-            </div>
-            <button className="link" onClick={voice.clearResult}>
-              Fechar
-            </button>
+      {voice.result && <ResultCard result={voice.result} onClose={voice.clearResult} />}
+    </div>
+  )
+}
+
+const REFERENCE_LABEL: Record<keyof ReferenceComponents, string> = {
+  pitch: 'Afinação',
+  notes: 'Notas corretas',
+  rhythm: 'Ritmo (entrada das notas)',
+  phrases: 'Entrada das frases',
+  duration: 'Duração das notas',
+  presence: 'Percentual cantado',
+  consistency: 'Consistência'
+}
+
+function ResultCard({
+  result,
+  onClose
+}: {
+  result: NonNullable<VoiceController['result']>
+  onClose(): void
+}): React.JSX.Element {
+  const ref = result.primary === 'reference' ? result.reference : null
+  const shown = ref ?? result.score
+  const song = `${result.songTitle}${result.singer ? ` · ${result.singer}` : ''}${
+    result.completedFraction !== null
+      ? ` · ${Math.round(result.completedFraction * 100)}% da música`
+      : ''
+  }`
+  return (
+    <div className="voice-result" data-testid="voice-result" data-mode={result.primary}>
+      <div className="voice-result-head">
+        <div>
+          <div className="mode-label" data-testid="voice-result-label">
+            {shown.label}
           </div>
-          {voice.result.score.insufficientReason && (
-            <div className="notice warn" data-testid="voice-insufficient">
-              {voice.result.score.insufficientReason}
-            </div>
-          )}
+          <div className="hint">{song}</div>
+        </div>
+        <div className="score" data-testid="voice-score">
+          {shown.score ?? '—'}
+          {shown.score !== null && <small>/100</small>}
+        </div>
+        <button className="link" onClick={onClose}>
+          Fechar
+        </button>
+      </div>
+
+      {shown.insufficientReason && (
+        <div className="notice warn" data-testid="voice-insufficient">
+          {shown.insufficientReason}
+        </div>
+      )}
+      {result.primary === 'basic' && result.reference?.insufficientReason && (
+        <div className="notice warn" data-testid="ref-insufficient">
+          Avaliação com melodia indisponível: {result.reference.insufficientReason} Mostrando a
+          avaliação básica.
+        </div>
+      )}
+
+      {ref ? (
+        <>
           <ul className="components" data-testid="voice-components">
-            {(Object.keys(voice.result.score.components) as (keyof typeof COMPONENT_LABEL)[]).map(
+            {(Object.keys(ref.components) as (keyof ReferenceComponents)[]).map((key) => {
+              const value = ref.components[key]
+              return (
+                <li key={key}>
+                  <span>{REFERENCE_LABEL[key]}</span>
+                  <span className="meter">
+                    <i style={{ width: value === null ? '0%' : pct(value) }} />
+                  </span>
+                  <span className="num">{value === null ? '—' : pct(value)}</span>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="hint" data-testid="ref-details">
+            <span data-testid="ref-notes">
+              Notas acertadas: {ref.notesHit} de {ref.notesEvaluated}
+            </span>{' '}
+            ·{' '}
+            <span data-testid="ref-transpose">
+              {ref.transposeSemitones === 0
+                ? 'no tom da melodia (oitava ignorada)'
+                : `transposição detectada: ${ref.transposeSemitones > 0 ? '+' : ''}${ref.transposeSemitones} semitons (afinação medida em relação a ela)`}
+            </span>
+            {ref.medianOnsetMs !== null && (
+              <>
+                {' '}
+                · <span data-testid="ref-onset">entrada mediana: {ref.medianOnsetMs} ms</span>
+              </>
+            )}
+          </p>
+          <p className="hint" data-testid="voice-disclaimer">
+            Comparação com a melodia do arquivo MIDI/KAR da música. A nota depende da qualidade
+            dessa melodia e de você cantar junto com a faixa.
+          </p>
+          <p className="hint small-print" data-testid="basic-complement">
+            Avaliação básica (complementar): {result.score.score ?? '—'}/100 · fórmula v
+            {ref.formulaVersion}
+          </p>
+        </>
+      ) : (
+        <>
+          <ul className="components" data-testid="voice-components">
+            {(Object.keys(result.score.components) as (keyof typeof COMPONENT_LABEL)[]).map(
               (key) => (
                 <li key={key}>
                   <span>{COMPONENT_LABEL[key]}</span>
                   <span className="meter">
-                    <i style={{ width: pct(voice.result!.score.components[key]) }} />
+                    <i style={{ width: pct(result.score.components[key]) }} />
                   </span>
-                  <span className="num">{pct(voice.result!.score.components[key])}</span>
+                  <span className="num">{pct(result.score.components[key])}</span>
                 </li>
               )
             )}
           </ul>
           <p className="hint" data-testid="voice-disclaimer">
-            {voice.result.score.disclaimer}
+            {result.score.disclaimer}
           </p>
           <p className="hint small-print">
-            Fórmula v{voice.result.score.formulaVersion} · voz em{' '}
-            {Math.round(voice.result.summary.voicedFraction * 100)}% do tempo · maior pausa{' '}
-            {voice.result.summary.longestGapSec.toFixed(1)} s
+            Fórmula v{result.score.formulaVersion} · voz em{' '}
+            {Math.round(result.summary.voicedFraction * 100)}% do tempo · maior pausa{' '}
+            {result.summary.longestGapSec.toFixed(1)} s
           </p>
-        </div>
+        </>
       )}
     </div>
   )

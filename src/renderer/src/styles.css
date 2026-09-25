@@ -835,3 +835,8 @@ body {
 .small-print {
   font-size: 11px;
 }
+
+.tag.melody {
+  color: #8fe3b0;
+  border-color: #3f8f66;
+}

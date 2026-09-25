@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import type { ReferenceNote } from '@shared/types'
 import { totalLatencyMs, clampManualMs, type LatencyCalibration } from './latency'
 import { describeMicError, isMicDeviceUnavailable } from './mic-errors'
 import { MicEngine, listMicrophones, type MicDevice, type MicInfo } from './mic-engine'
@@ -73,6 +74,8 @@ export interface VoiceInput {
   songDurationSec: number | null
   songTitle: string
   singer: string
+  /** Melodia de referência (MIDI/KAR) da música, ou null: então a avaliação é a básica. */
+  melody: readonly ReferenceNote[] | null
   audioRef: RefObject<HTMLAudioElement | null>
 }
 
@@ -117,7 +120,7 @@ interface SessionSlot {
  * avaliação habilitada, e é liberado ao terminar (pausas longas também liberam).
  */
 export function useVoice(input: VoiceInput): VoiceController {
-  const { phase, songId, songDurationSec, songTitle, singer, audioRef } = input
+  const { phase, songId, songDurationSec, songTitle, singer, melody, audioRef } = input
   const [prefs, setPrefs] = useState<VoicePrefs>(readPrefs)
   const [devices, setDevices] = useState<MicDevice[]>([])
   const [micStatus, setMicStatus] = useState<MicStatus>('off')
@@ -156,11 +159,18 @@ export function useVoice(input: VoiceInput): VoiceController {
   const frameCountRef = useRef(0)
   const slotRef = useRef<SessionSlot | null>(null)
   const graceRef = useRef(false)
+  const melodyRef = useRef(melody)
 
   useEffect(() => {
     latencyRef.current = latency
     slotRef.current?.session?.setLatency(latency)
   })
+
+  // A melodia chega de forma assíncrona: vale também para uma apresentação já iniciada.
+  useEffect(() => {
+    melodyRef.current = melody
+    slotRef.current?.session?.setMelody(melody)
+  }, [melody])
 
   useEffect(() => {
     try {
@@ -205,7 +215,8 @@ export function useVoice(input: VoiceInput): VoiceController {
             HOP_SAMPLES / (engine.sampleRate || 48000),
             latencyRef.current,
             slot.songId,
-            slot.songDurationSec
+            slot.songDurationSec,
+            melodyRef.current
           )
           slot.session.start()
         }
@@ -367,9 +378,13 @@ export function useVoice(input: VoiceInput): VoiceController {
     const finished = session.finish()
     setResult({ ...finished, songTitle: slot.songTitle, singer: slot.singer })
     setPerformanceView(null)
-    window.api.log('INFO', 'Avaliação básica concluída', {
+    window.api.log('INFO', 'Avaliação concluída', {
       songId: slot.songId,
-      score: finished.score.score,
+      mode: finished.primary,
+      score: finished.primary === 'reference' ? finished.reference?.score : finished.score.score,
+      basicScore: finished.score.score,
+      referenceNotes: finished.reference?.notesEvaluated,
+      transposeSemitones: finished.reference?.transposeSemitones,
       durationSec: Math.round(finished.summary.durationSec),
       voicedFraction: Number(finished.summary.voicedFraction.toFixed(3)),
       formulaVersion: finished.score.formulaVersion

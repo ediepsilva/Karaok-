@@ -7,6 +7,7 @@ import { PlayerPanel } from './components/PlayerPanel'
 import { QueuePanel } from './components/QueuePanel'
 import { useCamera } from './camera/useCamera'
 import { useLibrary } from './hooks/useLibrary'
+import { useMelody } from './voice/useMelody'
 import { useVoice } from './voice/useVoice'
 import { useQueue } from './hooks/useQueue'
 import { usePlayer } from './player/usePlayer'
@@ -67,12 +68,14 @@ export function App(): React.JSX.Element {
   const advanceRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const player = usePlayer(audioRef, canvasRef, { onEnded: () => void advanceRef.current() })
   const camera = useCamera(cameraVideoRef)
+  const melody = useMelody(player.state.songId)
   const voice = useVoice({
     phase: player.state.status,
     songId: player.state.songId,
     songDurationSec: current?.song.duration ?? (player.state.duration || null),
     songTitle: current?.song.title ?? '',
     singer: current?.song.singer ?? '',
+    melody: melody.info?.notes ?? null,
     audioRef
   })
 
@@ -244,6 +247,7 @@ export function App(): React.JSX.Element {
           camera={cameraUi}
           cameraVideoRef={cameraVideoRef}
           voice={voice}
+          melody={melody}
         />
       </main>
       {editing && (

@@ -84,3 +84,56 @@ export const MAX_FRAME_GAP_SEC = 0.5
 export const FINISH_GRACE_SEC = 0.3
 /** Pausas mais longas que isto (s) liberam o microfone; ele reabre ao retomar. */
 export const PAUSE_RELEASE_SEC = 20
+
+// ---------- Nota da AVALIAÇÃO COM MELODIA DE REFERÊNCIA (Fase 4B) ----------
+export const REFERENCE_FORMULA_VERSION = 1
+/** Erro de pitch (centésimos de semitom) até o qual o quadro vale ponto cheio; zera em ZERO. */
+export const PITCH_FULL_CENTS = 30
+export const PITCH_ZERO_CENTS = 200
+/** Uma nota conta como "acertada" se a mediana do erro ficar até aqui (e houve voz suficiente). */
+export const NOTE_HIT_CENTS = 50
+/** Tolerância (centésimos) para considerar o pitch "dentro da nota" na duração e na entrada. */
+export const SUSTAIN_TOLERANCE_CENTS = 100
+export const ONSET_TOLERANCE_CENTS = 150
+/** Fração da nota que precisa soar dentro da tolerância para a duração valer o máximo. */
+export const SUSTAIN_FULL_FRACTION = 0.8
+/** Presença: fração do tempo das notas com voz que vale o máximo. */
+export const PRESENCE_FULL_FRACTION = 0.85
+/** Ignora o ataque da nota (s, no máximo 30% dela) ao medir a afinação. */
+export const ATTACK_TRIM_SEC = 0.1
+/** Entrada: até este atraso (s) vale o máximo; a partir de ZERO vale 0. */
+export const ONSET_FULL_SEC = 0.1
+export const ONSET_ZERO_SEC = 0.4
+/** Janela (s) em torno do início da nota onde se procura a entrada do cantor. */
+export const ONSET_SEARCH_BEFORE_SEC = 0.3
+export const ONSET_SEARCH_AFTER_SEC = 0.5
+/** Tempo mínimo (s) do canto dentro do pitch para reconhecer uma entrada. */
+export const ONSET_HOLD_SEC = 0.06
+/** Intervalo (s) entre notas a partir do qual começa uma nova frase. */
+export const PHRASE_GAP_SEC = 0.6
+/** Consistência: desvio-padrão do pitch na nota (centésimos); ≤ LOW vale 1, ≥ HIGH vale 0. */
+export const CONSISTENCY_LOW_CENTS = 30
+export const CONSISTENCY_HIGH_CENTS = 120
+/** Sem transposição: acima disto (semitons) a mediana do erro vira "cantou em outro tom". */
+export const TRANSPOSE_MIN_SEMITONES = 0.8
+/** A transposição só é aceita se o desvio for quase um número exato de semitons (tolerância) e o
+ *  deslocamento for consistente em ao menos esta fração (por duração) das notas. */
+export const TRANSPOSE_MAX_RESIDUAL_SEMITONES = 0.3
+export const TRANSPOSE_MIN_CONSISTENCY = 0.6
+/** Quadros de voz mínimos numa nota para avaliá-la (senão conta como não cantada). */
+export const MIN_NOTE_FRAMES = 3
+/** Só entram na avaliação notas dentro do trecho que a apresentação cobriu (folga em s). */
+export const RANGE_SLACK_SEC = 0.5
+export const MIN_REFERENCE_NOTES = 3
+export const MIN_REFERENCE_NOTE_SEC = 3
+export const REFERENCE_GATE_MIN_PRESENCE = 0.1
+
+export const REFERENCE_WEIGHTS = {
+  pitch: 0.3,
+  notes: 0.15,
+  rhythm: 0.15,
+  phrases: 0.1,
+  duration: 0.1,
+  presence: 0.1,
+  consistency: 0.1
+} as const

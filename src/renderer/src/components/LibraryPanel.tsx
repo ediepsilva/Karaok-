@@ -95,8 +95,14 @@ export function LibraryPanel({
         <div className="notice info" role="status" data-testid="import-summary">
           <span>
             {lastImport.added} música(s) adicionada(s)
-            {lastImport.foundInZip > 0 && ` (${lastImport.foundInZip} em ZIP)`},{' '}
-            {lastImport.duplicates} já cadastrada(s), {lastImport.mp3WithoutCdg} MP3 sem CDG,{' '}
+            {(lastImport.foundInZip > 0 || lastImport.withMelody > 0) &&
+              ` (${[
+                lastImport.foundInZip > 0 ? `${lastImport.foundInZip} em ZIP` : '',
+                lastImport.withMelody > 0 ? `${lastImport.withMelody} com melodia MIDI/KAR` : ''
+              ]
+                .filter(Boolean)
+                .join(', ')})`}
+            , {lastImport.duplicates} já cadastrada(s), {lastImport.mp3WithoutCdg} MP3 sem CDG,{' '}
             {lastImport.cdgWithoutMp3} CDG sem MP3
             {lastImport.issues.length > 0 && `, ${lastImport.issues.length} com problema`}.
           </span>
@@ -131,6 +137,15 @@ export function LibraryPanel({
               <span className="title">
                 {song.title}
                 {song.source === 'zip' && <span className="tag">ZIP</span>}
+                {song.hasMelody && (
+                  <span
+                    className="tag melody"
+                    data-testid="tag-melody"
+                    title="Tem melodia de referência: a avaliação compara a sua voz com ela"
+                  >
+                    {song.melodyFormat === 'kar' ? 'KAR' : 'MIDI'}
+                  </span>
+                )}
                 {song.code && <span className="tag">{song.code}</span>}
               </span>
               <span className="artist">{song.artist || 'Artista desconhecido'}</span>

@@ -1,5 +1,7 @@
+import type { ReferenceNote } from '@shared/types'
 import { computeBasicScore, type BasicScore } from './basic-score'
 import { compensateSongTime, type LatencyCalibration } from './latency'
+import { computeReferenceScore, type ReferenceScore } from './reference-score'
 import type { FrameAnalysis } from './voice-analyzer'
 import { MAX_FRAME_GAP_SEC } from './voice-config'
 import { VoiceMetrics, type PitchPoint, type VoiceSummary } from './voice-metrics'
@@ -10,8 +12,13 @@ export interface PerformanceResult {
   /** Fração da música coberta pela apresentação (0–1), ou null se a duração é desconhecida. */
   completedFraction: number | null
   summary: VoiceSummary
+  /** AVALIAÇÃO BÁSICA: sempre calculada (complementa a avaliação com melodia). */
   score: BasicScore
-  /** Linha do tempo de pitch (para a futura comparação com melodia). */
+  /** AVALIAÇÃO COM MELODIA DE REFERÊNCIA, se a música tem melodia (MIDI/KAR); senão null. */
+  reference: ReferenceScore | null
+  /** Qual nota apresentar: a com melodia quando ela pôde ser calculada, senão a básica. */
+  primary: 'reference' | 'basic'
+  /** Linha do tempo de pitch (tempo da música já compensado pela latência). */
   track: readonly PitchPoint[]
   finishedAt: string
 }
@@ -19,22 +26,31 @@ export interface PerformanceResult {
 /**
  * Uma apresentação: recebe os quadros do microfone SOMENTE enquanto a música toca (iniciar/pausar/
  * retomar), aplica a compensação de latência ao tempo de cada quadro e, no fim, produz o resumo e
- * a nota da AVALIAÇÃO BÁSICA.
+ * a nota da AVALIAÇÃO BÁSICA (sempre) e, se houver melodia de referência, da AVALIAÇÃO COM
+ * MELODIA DE REFERÊNCIA.
  */
 export class PerformanceSession {
   private readonly metrics: VoiceMetrics
   private running = false
   private latency: LatencyCalibration
   private lastFrameTime: number | null = null
+  private melody: readonly ReferenceNote[] | null
 
   constructor(
     private readonly frameSec: number,
     latency: LatencyCalibration,
     private readonly songId: number | null = null,
-    private readonly songDurationSec: number | null = null
+    private readonly songDurationSec: number | null = null,
+    melody: readonly ReferenceNote[] | null = null
   ) {
     this.metrics = new VoiceMetrics(frameSec)
     this.latency = latency
+    this.melody = melody
+  }
+
+  /** A melodia pode chegar depois do início (leitura do MIDI/KAR é assíncrona). */
+  setMelody(melody: readonly ReferenceNote[] | null): void {
+    this.melody = melody
   }
 
   get isRunning(): boolean {
@@ -92,12 +108,18 @@ export class PerformanceSession {
       this.songDurationSec !== null && this.songDurationSec > 0
         ? Math.min(1, summary.durationSec / this.songDurationSec)
         : null
+    const reference =
+      this.melody && this.melody.length > 0
+        ? computeReferenceScore(this.metrics.pitchTrack, this.melody)
+        : null
     return {
       songId: this.songId,
       songDurationSec: this.songDurationSec,
       completedFraction: completed,
       summary,
       score: computeBasicScore(summary),
+      reference,
+      primary: reference !== null && reference.score !== null ? 'reference' : 'basic',
       track: this.metrics.pitchTrack,
       finishedAt: new Date().toISOString()
     }
