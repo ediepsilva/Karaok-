@@ -9,6 +9,8 @@ export interface LibraryController {
   setFavoritesOnly(value: boolean): void
   loading: boolean
   busy: boolean
+  /** O seletor nativo de pasta está aberto (aguardando o usuário escolher ou cancelar). */
+  picking: boolean
   error: string | null
   /** Mensagem de resultado da última operação (importar, reescanear, limpar). */
   notice: string | null
@@ -38,6 +40,8 @@ export function useLibrary(): LibraryController {
   const [notice, setNotice] = useState<string | null>(null)
   const [lastImport, setLastImport] = useState<ImportResult | null>(null)
   const requestId = useRef(0)
+  const pickingRef = useRef(false)
+  const [picking, setPicking] = useState(false)
 
   const refresh = useCallback(async (q: string, favorites: boolean): Promise<void> => {
     const id = ++requestId.current
@@ -71,7 +75,13 @@ export function useLibrary(): LibraryController {
   )
 
   const addFolder = useCallback(async (): Promise<void> => {
-    const picked = await window.api.library.pickFolder()
+    if (pickingRef.current) return // o seletor já está aberto: ignora clique repetido
+    pickingRef.current = true
+    setPicking(true)
+    const picked = await window.api.library.pickFolder().finally(() => {
+      pickingRef.current = false
+      setPicking(false)
+    })
     if (!picked.ok) return setError(picked.message)
     if (picked.value === null) return
     const folder = picked.value
@@ -147,6 +157,7 @@ export function useLibrary(): LibraryController {
     error,
     notice,
     lastImport,
+    picking,
     addFolder,
     rescan,
     removeMissing,

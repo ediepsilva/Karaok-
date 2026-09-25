@@ -60,17 +60,35 @@ export function registerIpc({ library, queue, melody, micGate, logger, info }: I
   handle(IPC.libraryImportFolder, (folder) => library.importFolder(folder as string))
   handle(IPC.libraryRescan, () => library.rescan())
   handle(IPC.libraryRemoveMissing, () => library.removeMissing())
+  // O seletor é modal e fica aberto até o usuário escolher ou cancelar (sem timeout). Uma segunda
+  // chamada enquanto ele está aberto reaproveita a mesma escolha em vez de abrir outro diálogo.
+  let pendingPick: Promise<string | null> | null = null
   ipcMain.handle(IPC.libraryPickFolder, (event) =>
-    guard(logger, IPC.libraryPickFolder, async () => {
+    guard(logger, IPC.libraryPickFolder, () => {
+      if (pendingPick) {
+        logger.warn('Seletor de pasta já aberto: chamada repetida ignorada')
+        return pendingPick
+      }
       const owner = BrowserWindow.fromWebContents(event.sender)
       const options = {
         title: 'Escolha a pasta de músicas MP3+G',
         properties: ['openDirectory' as const]
       }
-      const result = owner
-        ? await dialog.showOpenDialog(owner, options)
-        : await dialog.showOpenDialog(options)
-      return result.canceled ? null : (result.filePaths[0] ?? null)
+      const openedAt = Date.now()
+      logger.info('Seletor de pasta aberto')
+      pendingPick = (owner ? dialog.showOpenDialog(owner, options) : dialog.showOpenDialog(options))
+        .then((result) => {
+          const picked = result.canceled ? null : (result.filePaths[0] ?? null)
+          logger.info('Seletor de pasta fechado', {
+            motivo: picked === null ? 'cancelado pelo usuário' : 'pasta escolhida',
+            abertoPorMs: Date.now() - openedAt
+          })
+          return picked
+        })
+        .finally(() => {
+          pendingPick = null
+        })
+      return pendingPick
     })
   )
 

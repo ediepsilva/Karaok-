@@ -21,7 +21,7 @@ export function LibraryPanel({
   onEnqueue,
   onEdit
 }: Props): React.JSX.Element {
-  const { songs, query, setQuery, loading, busy, error, notice, lastImport } = library
+  const { songs, query, setQuery, loading, busy, picking, error, notice, lastImport } = library
   const canEnqueue = singer.trim().length > 0
 
   return (
@@ -35,8 +35,13 @@ export function LibraryPanel({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="btn primary" onClick={() => void library.addFolder()} disabled={busy}>
-          {busy ? 'Aguarde…' : 'Adicionar pasta de músicas'}
+        <button
+          className="btn primary"
+          data-testid="btn-add-folder"
+          onClick={() => void library.addFolder()}
+          disabled={busy || picking}
+        >
+          {picking ? 'Escolhendo pasta…' : busy ? 'Aguarde…' : 'Adicionar pasta de músicas'}
         </button>
       </div>
 
