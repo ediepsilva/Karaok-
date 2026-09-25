@@ -61,6 +61,10 @@ qual foi usado.
 - Aplausos abaixam durante a fala (_ducking_) e desaparecem com _fade-out_ ao final.
 - Liga/desliga e volume próprios, guardados entre sessões.
 - Ver [docs/FASE5_APLAUSOS_VOZ.md](docs/FASE5_APLAUSOS_VOZ.md).
+- **Níveis de dificuldade** (Amador/Semiprofissional/Profissional), escolhidos antes de cantar,
+  com promoção semiautomática de nível e nota exibida em escala 0,0–10,0. Mesmo motor de
+  avaliação da Fase 4, só a tolerância/peso mudam por nível. Ver
+  [docs/NIVEIS_AVALIACAO.md](docs/NIVEIS_AVALIACAO.md).
 
 ## Fase 6 — Transmissão remota
 

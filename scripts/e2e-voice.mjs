@@ -65,6 +65,9 @@ const openVoice = async (page) => {
 const micActive = async (page) =>
   /ATIVO/.test(await text(page, 'mic-status')) && !/INATIVO/.test(await text(page, 'mic-status'))
 const number = (s) => Number((s.match(/-?\d+(\.\d+)?/) ?? [NaN])[0])
+// A nota exibida (voice-score) está em escala 0,0–10,0; o valor interno (0–100) fica em
+// data-score-100 exatamente para os testes não precisarem reinterpretar a vírgula decimal.
+const score100 = (page) => page.getAttribute(T('voice-score'), 'data-score-100').then(Number)
 const setRange = (page, id, value) =>
   page.evaluate(
     ([sel, v]) => {
@@ -92,7 +95,7 @@ async function performFullSong(page) {
   await playSong(page, 'Tom de Teste')
   await page.waitForSelector(T('voice-result'), { timeout: 45000 })
   return {
-    score: number(await text(page, 'voice-score')),
+    score: await score100(page),
     label: await text(page, 'voice-result-label')
   }
 }
@@ -239,7 +242,7 @@ try {
   await page.click(T('btn-stop'))
   await page.waitForSelector(T('voice-result'), { timeout: 20000 })
   const partial = await text(page, 'voice-result')
-  const partialScore = number(await text(page, 'voice-score'))
+  const partialScore = await score100(page)
   check(
     'V20. parar antes do fim encerra e mostra o resultado (AVALIAÇÃO BÁSICA)',
     (await text(page, 'voice-result-label')) === 'AVALIAÇÃO BÁSICA'
@@ -248,6 +251,12 @@ try {
     'V21. tom contínuo e estável rende nota alta no modo básico (≥ 85)',
     partialScore >= 85 && partialScore <= 100,
     `${partialScore}/100`
+  )
+  const partialScoreText = await text(page, 'voice-score')
+  check(
+    'V21b. a nota aparece na tela em escala 0,0–10,0 (não 0–100)',
+    /^\d{1,2},\d\/10$/.test(partialScoreText),
+    partialScoreText
   )
   check(
     'V22. o resultado informa a fração da música avaliada',
@@ -332,7 +341,7 @@ try {
   await sleep(2500)
   const silentState = await text(page, 'diag-state')
   await page.waitForSelector(T('voice-result'), { timeout: 50000 })
-  const silenceScore = number(await text(page, 'voice-score'))
+  const silenceScore = await score100(page)
   check('B1. silêncio é detectado como silêncio', silentState === 'silêncio', silentState)
   check('B2. silêncio recebe nota 0', silenceScore === 0, `${silenceScore}/100`)
   await app.close()
@@ -352,7 +361,7 @@ try {
     noiseStates.add(await text(page, 'diag-state'))
   }
   await page.waitForSelector(T('voice-result'), { timeout: 50000 })
-  const noiseScore = number(await text(page, 'voice-score'))
+  const noiseScore = await score100(page)
   check(
     'C1. ruído branco nunca é confundido com voz',
     !noiseStates.has('voz'),
@@ -388,7 +397,7 @@ try {
     }
   }
   await page.waitForSelector(T('voice-result'), { timeout: 45000 })
-  const melodyScore = number(await text(page, 'voice-score'))
+  const melodyScore = await score100(page)
   check(
     'D1. acompanha as mudanças de nota (≥ 5 notas distintas da melodia)',
     [...seen].filter((n) => valid.has(n)).length >= 5,
@@ -415,7 +424,7 @@ try {
     await playSong(page, title)
     await page.waitForSelector(T('voice-result'), { timeout: 60000 })
     const out = {
-      score: number(await text(page, 'voice-score')),
+      score: await score100(page),
       label: await text(page, 'voice-result-label'),
       mode: await page.getAttribute(T('voice-result'), 'data-mode'),
       notes: (await page.textContent(T('ref-notes')).catch(() => '')) ?? '',
@@ -457,7 +466,7 @@ try {
   )
   await page.waitForSelector(T('voice-result'), { timeout: 60000 })
   const la = {
-    score: number(await text(page, 'voice-score')),
+    score: await score100(page),
     label: await text(page, 'voice-result-label'),
     mode: await page.getAttribute(T('voice-result'), 'data-mode'),
     notes: await text(page, 'ref-notes'),
@@ -497,7 +506,7 @@ try {
   await page.waitForSelector(T('voice-result'), { timeout: 60000 })
   const broken = {
     label: await text(page, 'voice-result-label'),
-    score: number(await text(page, 'voice-score'))
+    score: await score100(page)
   }
   check(
     'E9. sem melodia utilizável o resultado continua AVALIAÇÃO BÁSICA',

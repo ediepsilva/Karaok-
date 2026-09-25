@@ -4,6 +4,7 @@ import { computeBasicScore } from '../src/renderer/src/voice/basic-score'
 import { midiToFrequency } from '../src/renderer/src/voice/pitch'
 import { PerformanceSession } from '../src/renderer/src/voice/performance-session'
 import { computeReferenceScore, wrapSemitones } from '../src/renderer/src/voice/reference-score'
+import { EVALUATION_PROFILES } from '../src/renderer/src/voice/evaluation-profile'
 import { MODE_LABELS, type ReferenceNote } from '../src/renderer/src/voice/reference'
 import { VoiceAnalyzer } from '../src/renderer/src/voice/voice-analyzer'
 import { DEFAULT_LATENCY } from '../src/renderer/src/voice/latency'
@@ -340,5 +341,41 @@ describe('transposição: só semitons exatos e consistentes', () => {
   it('transposição de semitons mais leve em metade das notas não é consistente: não absorve', () => {
     const wrong = MELODY.map((_, i) => (i % 2 === 0 ? 2 : 7))
     expect(computeReferenceScore(performance({ wrong }), MELODY).transposeSemitones).toBe(0)
+  })
+})
+
+describe('Níveis de dificuldade (Amador / Semiprofissional / Profissional)', () => {
+  /** A mesma apresentação (com vibrato e ligeira desafinação) julgada nos 3 níveis. */
+  const imperfect = performance({ wobbleCents: 35, detuneCents: 20 })
+
+  it('a mesma apresentação rende nota progressivamente menor em níveis mais altos', () => {
+    const amateur = computeReferenceScore(imperfect, MELODY, {
+      profile: EVALUATION_PROFILES.amateur
+    }).score!
+    const semiPro = computeReferenceScore(imperfect, MELODY, {
+      profile: EVALUATION_PROFILES.semiPro
+    }).score!
+    const professional = computeReferenceScore(imperfect, MELODY, {
+      profile: EVALUATION_PROFILES.professional
+    }).score!
+    expect(amateur).toBeGreaterThan(semiPro)
+    expect(semiPro).toBeGreaterThan(professional)
+  })
+
+  it('sem perfil (padrão), o resultado é idêntico ao perfil Semiprofissional', () => {
+    const withDefault = computeReferenceScore(imperfect, MELODY)
+    const withSemiPro = computeReferenceScore(imperfect, MELODY, {
+      profile: EVALUATION_PROFILES.semiPro
+    })
+    expect(withDefault.score).toBe(withSemiPro.score)
+    expect(withDefault.components).toEqual(withSemiPro.components)
+  })
+
+  it('uma apresentação perfeita continua com nota máxima em qualquer nível (a tolerância não inventa erro)', () => {
+    const perfect = performance()
+    for (const profile of Object.values(EVALUATION_PROFILES)) {
+      const r = computeReferenceScore(perfect, MELODY, { profile })
+      expect(r.score).toBeGreaterThanOrEqual(95)
+    }
   })
 })

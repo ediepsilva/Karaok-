@@ -1,4 +1,9 @@
 import type { ReferenceNote } from '@shared/types'
+import {
+  EVALUATION_PROFILES,
+  reshapeForTolerance,
+  type EvaluationProfile
+} from './evaluation-profile'
 import { MODE_LABELS } from './reference'
 import type { PitchPoint } from './voice-metrics'
 import {
@@ -78,6 +83,19 @@ export interface ReferenceScore {
 export interface ReferenceOptions {
   /** Aceita cantar num tom diferente (mede a afinação relativa). Padrão: true. */
   allowTransposition?: boolean
+  /** Nível de dificuldade (tolerância e pesos). Padrão: Semiprofissional (neutro). */
+  profile?: EvaluationProfile
+}
+
+/** Pesos de REFERENCE_WEIGHTS que este componente usa como referência de "peso base" do perfil. */
+const PROFILE_WEIGHT_KEY: Partial<
+  Record<keyof ReferenceComponents, keyof EvaluationProfile['weight']>
+> = {
+  pitch: 'pitch',
+  rhythm: 'timing',
+  phrases: 'timing',
+  duration: 'continuity',
+  consistency: 'stability'
 }
 
 const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
@@ -172,6 +190,7 @@ export function computeReferenceScore(
   options: ReferenceOptions = {}
 ): ReferenceScore {
   const allowTransposition = options.allowTransposition ?? true
+  const profile = options.profile ?? EVALUATION_PROFILES.semiPro
 
   const timed = track.filter((p) => p.songTime !== null)
   if (timed.length === 0) return insufficient('Não há dados de voz alinhados ao tempo da música.')
@@ -338,7 +357,7 @@ export function computeReferenceScore(
   }
 
   const presence = clamp01(presenceSum / totalNoteSec / PRESENCE_FULL_FRACTION)
-  const components: ReferenceComponents = {
+  const raw: ReferenceComponents = {
     pitch: pitchSum / totalNoteSec,
     notes: hitDur / totalNoteSec,
     rhythm: weightedMean(onsetScores),
@@ -347,6 +366,14 @@ export function computeReferenceScore(
     presence,
     consistency: consistencySum / totalNoteSec
   }
+  // A tolerância do nível se aplica aos componentes "de técnica" (afinação, ritmo, entrada das
+  // frases, duração das notas, consistência); notas certas e % cantado não são sobre TÉCNICA e
+  // ficam iguais em qualquer nível. Ver docs/NIVEIS_AVALIACAO.md.
+  const components: ReferenceComponents = { ...raw }
+  for (const key of Object.keys(PROFILE_WEIGHT_KEY) as (keyof ReferenceComponents)[]) {
+    const value = raw[key]
+    if (value !== null) components[key] = reshapeForTolerance(value, profile.toleranceExponent)
+  }
 
   // Soma ponderada; componentes não mensuráveis (null) saem e os pesos restantes são renormalizados.
   let weighted = 0
@@ -354,8 +381,11 @@ export function computeReferenceScore(
   for (const key of Object.keys(REFERENCE_WEIGHTS) as (keyof ReferenceComponents)[]) {
     const value = components[key]
     if (value === null) continue
-    weighted += REFERENCE_WEIGHTS[key] * value
-    weightUsed += REFERENCE_WEIGHTS[key]
+    const profileKey = PROFILE_WEIGHT_KEY[key]
+    const multiplier = profileKey ? profile.weight[profileKey] : 1
+    const weight = REFERENCE_WEIGHTS[key] * multiplier
+    weighted += weight * value
+    weightUsed += weight
   }
   const gate = clamp01(presenceSum / totalNoteSec / REFERENCE_GATE_MIN_PRESENCE)
   const score = Math.round(100 * gate * (weightUsed > 0 ? weighted / weightUsed : 0))

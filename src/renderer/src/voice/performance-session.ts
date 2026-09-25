@@ -1,5 +1,6 @@
 import type { ReferenceNote } from '@shared/types'
 import { computeBasicScore, type BasicScore } from './basic-score'
+import { EVALUATION_PROFILES, type EvaluationProfile } from './evaluation-profile'
 import { compensateSongTime, type LatencyCalibration } from './latency'
 import { computeReferenceScore, type ReferenceScore } from './reference-score'
 import type { FrameAnalysis } from './voice-analyzer'
@@ -18,6 +19,8 @@ export interface PerformanceResult {
   reference: ReferenceScore | null
   /** Qual nota apresentar: a com melodia quando ela pôde ser calculada, senão a básica. */
   primary: 'reference' | 'basic'
+  /** Nível de dificuldade usado nesta apresentação (Amador/Semiprofissional/Profissional). */
+  evaluationProfile: EvaluationProfile
   /** Linha do tempo de pitch (tempo da música já compensado pela latência). */
   track: readonly PitchPoint[]
   finishedAt: string
@@ -41,7 +44,8 @@ export class PerformanceSession {
     latency: LatencyCalibration,
     private readonly songId: number | null = null,
     private readonly songDurationSec: number | null = null,
-    melody: readonly ReferenceNote[] | null = null
+    melody: readonly ReferenceNote[] | null = null,
+    private readonly profile: EvaluationProfile = EVALUATION_PROFILES.semiPro
   ) {
     this.metrics = new VoiceMetrics(frameSec)
     this.latency = latency
@@ -110,16 +114,17 @@ export class PerformanceSession {
         : null
     const reference =
       this.melody && this.melody.length > 0
-        ? computeReferenceScore(this.metrics.pitchTrack, this.melody)
+        ? computeReferenceScore(this.metrics.pitchTrack, this.melody, { profile: this.profile })
         : null
     return {
       songId: this.songId,
       songDurationSec: this.songDurationSec,
       completedFraction: completed,
       summary,
-      score: computeBasicScore(summary),
+      score: computeBasicScore(summary, this.profile),
       reference,
       primary: reference !== null && reference.score !== null ? 'reference' : 'basic',
+      evaluationProfile: this.profile,
       track: this.metrics.pitchTrack,
       finishedAt: new Date().toISOString()
     }

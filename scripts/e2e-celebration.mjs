@@ -102,7 +102,9 @@ try {
   await playSong(page, 'Tom de Teste')
   await waitText(page, 'mic-status', /MICROFONE ATIVO/, 25000)
   await page.waitForSelector(T('voice-result'), { timeout: 45000 })
-  const score = Number((await text(page, 'voice-score')).match(/-?\d+/)?.[0] ?? NaN)
+  // A tela mostra a nota em escala 0,0–10,0; a fala (TTS) usa os "pontos" na escala interna
+  // 0–100, exposta em data-score-100 (ver VoicePanel.tsx) exatamente para isto.
+  const score = Number(await page.getAttribute(T('voice-score'), 'data-score-100'))
   check('C3. apresentação gerou uma nota', score >= 0 && score <= 100, `${score}/100`)
 
   // dá tempo do atraso da fala (SPEECH_DELAY_SEC) + a fala em si acontecer

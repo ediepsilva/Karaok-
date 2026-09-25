@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { ReferenceNote } from '@shared/types'
+import type { EvaluationProfile } from './evaluation-profile'
 import { totalLatencyMs, clampManualMs, type LatencyCalibration } from './latency'
 import { describeMicError, isMicDeviceUnavailable } from './mic-errors'
 import { MicEngine, listMicrophones, type MicDevice, type MicInfo } from './mic-engine'
@@ -76,6 +77,8 @@ export interface VoiceInput {
   singer: string
   /** Melodia de referência (MIDI/KAR) da música, ou null: então a avaliação é a básica. */
   melody: readonly ReferenceNote[] | null
+  /** Nível de dificuldade escolhido para esta apresentação. */
+  evaluationProfile: EvaluationProfile
   audioRef: RefObject<HTMLAudioElement | null>
 }
 
@@ -181,7 +184,8 @@ const roundAll = (values: Record<string, number>): Record<string, number> =>
   Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v.toFixed(3))]))
 
 export function useVoice(input: VoiceInput): VoiceController {
-  const { phase, songId, songDurationSec, songTitle, singer, melody, audioRef } = input
+  const { phase, songId, songDurationSec, songTitle, singer, melody, evaluationProfile, audioRef } =
+    input
   const [prefs, setPrefs] = useState<VoicePrefs>(readPrefs)
   const [devices, setDevices] = useState<MicDevice[]>([])
   const [micStatus, setMicStatus] = useState<MicStatus>('off')
@@ -221,12 +225,19 @@ export function useVoice(input: VoiceInput): VoiceController {
   const slotRef = useRef<SessionSlot | null>(null)
   const graceRef = useRef(false)
   const melodyRef = useRef(melody)
+  // Nível escolhido antes de começar a cantar; usado quando a sessão da apresentação é criada
+  // (não muda uma apresentação já em andamento, assim como songId/songDurationSec).
+  const evaluationProfileRef = useRef(evaluationProfile)
   const teleRef = useRef<Telemetry>(newTelemetry())
 
   useEffect(() => {
     latencyRef.current = latency
     slotRef.current?.session?.setLatency(latency)
   })
+
+  useEffect(() => {
+    evaluationProfileRef.current = evaluationProfile
+  }, [evaluationProfile])
 
   // A melodia chega de forma assíncrona: vale também para uma apresentação já iniciada.
   useEffect(() => {
@@ -284,7 +295,8 @@ export function useVoice(input: VoiceInput): VoiceController {
             latencyRef.current,
             slot.songId,
             slot.songDurationSec,
-            melodyRef.current
+            melodyRef.current,
+            evaluationProfileRef.current
           )
           slot.session.start()
         }
@@ -449,6 +461,7 @@ export function useVoice(input: VoiceInput): VoiceController {
     setPerformanceView(null)
     window.api.log('INFO', 'Avaliação concluída', {
       songId: slot.songId,
+      level: finished.evaluationProfile.level,
       mode: finished.primary,
       score: finished.primary === 'reference' ? finished.reference?.score : finished.score.score,
       basicScore: finished.score.score,

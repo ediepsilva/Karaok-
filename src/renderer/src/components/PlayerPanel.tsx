@@ -5,6 +5,7 @@ import type { CameraController } from '../camera/useCamera'
 import { CameraControls } from './CameraControls'
 import { VoicePanel } from './VoicePanel'
 import type { CelebrationController } from '../celebration/useCelebration'
+import type { EvaluationLevelController } from '../voice/useEvaluationLevel'
 import type { MelodyController } from '../voice/useMelody'
 import type { VoiceController } from '../voice/useVoice'
 import type { PlayerControls } from '../player/usePlayer'
@@ -23,6 +24,7 @@ interface Props {
   voice: VoiceController
   melody: MelodyController
   celebration: CelebrationController
+  evaluationLevel: EvaluationLevelController
 }
 
 export function PlayerPanel({
@@ -37,7 +39,8 @@ export function PlayerPanel({
   cameraVideoRef,
   voice,
   melody,
-  celebration
+  celebration,
+  evaluationLevel
 }: Props): React.JSX.Element {
   const { state } = player
   const stageRef = useRef<HTMLDivElement>(null)
@@ -176,7 +179,12 @@ export function PlayerPanel({
           rolam nesta área própria, sem nunca espremer o CDG (Fase 1, correção pós-teste manual). */}
       <div className="player-extra" data-testid="player-extra">
         <CameraControls camera={camera} />
-        <VoicePanel voice={voice} melody={melody} celebration={celebration} />
+        <VoicePanel
+          voice={voice}
+          melody={melody}
+          celebration={celebration}
+          evaluationLevel={evaluationLevel}
+        />
       </div>
     </section>
   )

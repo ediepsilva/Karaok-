@@ -1,7 +1,14 @@
+import { useState } from 'react'
 import { basicComponents } from '../voice/basic-score'
+import {
+  EVALUATION_LEVELS,
+  EVALUATION_PROFILES,
+  shouldOfferPromotion
+} from '../voice/evaluation-profile'
 import { formatNote } from '../voice/mic-errors'
 import type { ReferenceComponents } from '../voice/reference-score'
 import type { CelebrationController } from '../celebration/useCelebration'
+import type { EvaluationLevelController } from '../voice/useEvaluationLevel'
 import type { MelodyController } from '../voice/useMelody'
 import type { VoiceController, VoiceResult } from '../voice/useVoice'
 import { MANUAL_LATENCY_MAX_MS, MANUAL_LATENCY_MIN_MS } from '../voice/voice-config'
@@ -11,6 +18,12 @@ interface Props {
   voice: VoiceController
   melody: MelodyController
   celebration: CelebrationController
+  evaluationLevel: EvaluationLevelController
+}
+
+/** Nota interna (0–100) na escala que o cantor vê (0,0–10,0), com vírgula (padrão brasileiro). */
+export function formatScore10(score: number): string {
+  return (score / 10).toFixed(1).replace('.', ',')
 }
 
 const STATE_LABEL = { silence: 'silêncio', noise: 'ruído', voice: 'voz', idle: '—' } as const
@@ -27,7 +40,12 @@ const pct = (v: number): string => `${Math.round(v * 100)}%`
 const levelWidth = (dbfs: number): string =>
   `${Math.max(0, Math.min(100, ((dbfs + 70) / 70) * 100))}%`
 
-export function VoicePanel({ voice, melody, celebration }: Props): React.JSX.Element {
+export function VoicePanel({
+  voice,
+  melody,
+  celebration,
+  evaluationLevel
+}: Props): React.JSX.Element {
   const { live, prefs, info } = voice
   const micOn = voice.micStatus === 'on'
   const selected = voice.devices.some((d) => d.id === (info?.deviceId ?? prefs.deviceId))
@@ -53,6 +71,30 @@ export function VoicePanel({ voice, melody, celebration }: Props): React.JSX.Ele
         </summary>
 
         <div className="voice-body">
+          <div className="level-picker" data-testid="level-picker">
+            <span className="level-picker-label">Nível de avaliação:</span>
+            <div className="level-buttons">
+              {EVALUATION_LEVELS.map((level) => {
+                const p = EVALUATION_PROFILES[level]
+                return (
+                  <button
+                    key={level}
+                    type="button"
+                    className={`btn level-btn${evaluationLevel.level === level ? ' selected' : ''}`}
+                    data-testid={`level-${level}`}
+                    aria-pressed={evaluationLevel.level === level}
+                    title={p.shortDescription}
+                    onClick={() => evaluationLevel.setLevel(level)}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="hint" data-testid="level-description">
+              {EVALUATION_PROFILES[evaluationLevel.level].shortDescription}
+            </p>
+          </div>
           <label className="check strong">
             <input
               type="checkbox"
@@ -298,7 +340,13 @@ export function VoicePanel({ voice, melody, celebration }: Props): React.JSX.Ele
         </div>
       </details>
 
-      {voice.result && <ResultCard result={voice.result} onClose={voice.clearResult} />}
+      {voice.result && (
+        <ResultCard
+          result={voice.result}
+          onClose={voice.clearResult}
+          evaluationLevel={evaluationLevel}
+        />
+      )}
     </div>
   )
 }
@@ -315,10 +363,12 @@ const REFERENCE_LABEL: Record<keyof ReferenceComponents, string> = {
 
 function ResultCard({
   result,
-  onClose
+  onClose,
+  evaluationLevel
 }: {
   result: NonNullable<VoiceController['result']>
   onClose(): void
+  evaluationLevel: EvaluationLevelController
 }): React.JSX.Element {
   const ref = result.primary === 'reference' ? result.reference : null
   const shown = ref ?? result.score
@@ -327,6 +377,20 @@ function ResultCard({
       ? ` · ${Math.round(result.completedFraction * 100)}% da música`
       : ''
   }`
+  const performanceLevel = result.evaluationProfile.level
+  const performanceLabel = result.evaluationProfile.label
+  const promoteTo =
+    shown.score !== null ? shouldOfferPromotion(performanceLevel, shown.score) : null
+  const [decision, setDecision] = useState<'accepted' | 'declined' | null>(null)
+  // só oferece se ninguém já decidiu por ESTA apresentação e o nível ainda não mudou por outro caminho
+  const offerPromotion =
+    promoteTo !== null && decision === null && evaluationLevel.level === performanceLevel
+  const celebrateTop =
+    performanceLevel === 'professional' &&
+    decision === null &&
+    shown.score !== null &&
+    promoteTo === null &&
+    shown.score >= 90
   return (
     <div className="voice-result" data-testid="voice-result" data-mode={result.primary}>
       <div className="voice-result-head">
@@ -334,16 +398,52 @@ function ResultCard({
           <div className="mode-label" data-testid="voice-result-label">
             {shown.label}
           </div>
-          <div className="hint">{song}</div>
+          <div className="hint">
+            {song} · Nível: {performanceLabel}
+          </div>
         </div>
-        <div className="score" data-testid="voice-score">
-          {shown.score ?? '—'}
-          {shown.score !== null && <small>/100</small>}
+        <div className="score" data-testid="voice-score" data-score-100={shown.score ?? undefined}>
+          {shown.score !== null ? formatScore10(shown.score) : '—'}
+          {shown.score !== null && <small>/10</small>}
         </div>
         <button className="link" onClick={onClose}>
           Fechar
         </button>
       </div>
+
+      {offerPromotion && (
+        <div className="notice info" data-testid="promotion-offer">
+          <p>
+            Excelente apresentação! Você atingiu pontuação para avançar ao nível{' '}
+            {EVALUATION_PROFILES[promoteTo].label}.
+          </p>
+          <p>Deseja subir de nível na próxima apresentação?</p>
+          <div className="controls">
+            <button
+              className="btn primary"
+              data-testid="btn-promote"
+              onClick={() => {
+                evaluationLevel.setLevel(promoteTo)
+                setDecision('accepted')
+              }}
+            >
+              Subir para {EVALUATION_PROFILES[promoteTo].label}
+            </button>
+            <button
+              className="btn"
+              data-testid="btn-stay-level"
+              onClick={() => setDecision('declined')}
+            >
+              Continuar no {performanceLabel}
+            </button>
+          </div>
+        </div>
+      )}
+      {celebrateTop && (
+        <div className="notice info" data-testid="top-level-praise">
+          Excelente desempenho em nível Profissional!
+        </div>
+      )}
 
       {shown.insufficientReason && (
         <div className="notice warn" data-testid="voice-insufficient">
@@ -395,7 +495,8 @@ function ResultCard({
             dessa melodia e de você cantar junto com a faixa.
           </p>
           <p className="hint small-print" data-testid="basic-complement">
-            Avaliação básica (complementar): {result.score.score ?? '—'}/100 · fórmula v
+            Avaliação básica (complementar):{' '}
+            {result.score.score !== null ? formatScore10(result.score.score) : '—'}/10 · fórmula v
             {ref.formulaVersion}
           </p>
         </>

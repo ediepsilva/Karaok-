@@ -32,20 +32,17 @@ function makeGain(): GainNodeLike {
   return { gain, connect: vi.fn(), disconnect: vi.fn() }
 }
 
-interface FakeSource {
-  buffer: unknown
-  start: ReturnType<typeof vi.fn>
+/** Só o suficiente para as verificações do teste: se cada fonte foi parada. */
+interface TrackedSource {
   stop: ReturnType<typeof vi.fn>
-  onended: (() => void) | null
-  connect: ReturnType<typeof vi.fn>
 }
 
 function makeFakeAudioContext(): {
   ctx: AudioContextLike
-  sources: FakeSource[]
+  sources: TrackedSource[]
   closed: () => boolean
 } {
-  const sources: FakeSource[] = []
+  const sources: TrackedSource[] = []
   let closed = false
   const ctx: AudioContextLike = {
     currentTime: 0,
@@ -54,15 +51,9 @@ function makeFakeAudioContext(): {
     createGain: () => makeGain(),
     createBuffer: (_channels, length) => ({ getChannelData: () => new Float32Array(length) }),
     createBufferSource: () => {
-      const source: FakeSource = {
-        buffer: null,
-        start: vi.fn(),
-        stop: vi.fn(),
-        onended: null,
-        connect: vi.fn()
-      }
-      sources.push(source)
-      return source
+      const stop = vi.fn()
+      sources.push({ stop })
+      return { buffer: null, start: vi.fn(), stop, onended: null, connect: vi.fn() }
     },
     createBiquadFilter: () => ({
       type: 'lowpass',
@@ -79,8 +70,8 @@ function makeFakeAudioContext(): {
         cancelScheduledValues: vi.fn()
       },
       connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn()
+      start: vi.fn<(when?: number) => void>(),
+      stop: vi.fn<(when?: number) => void>()
     }),
     close: () => {
       closed = true

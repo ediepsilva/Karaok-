@@ -1,3 +1,8 @@
+import {
+  EVALUATION_PROFILES,
+  reshapeForTolerance,
+  type EvaluationProfile
+} from './evaluation-profile'
 import type { VoiceSummary } from './voice-metrics'
 import {
   ACTIVITY_FULL_FRACTION,
@@ -38,6 +43,7 @@ export interface BasicScore {
   /** 0–100, ou null se a apresentação foi curta demais para avaliar. */
   score: number | null
   insufficientReason: string | null
+  /** Componentes já ajustados pelo nível (o que realmente contou para a nota). */
   components: BasicComponents
   /** Aviso obrigatório: o que esta nota NÃO significa. */
   disclaimer: string
@@ -83,8 +89,24 @@ export function basicComponents(s: VoiceSummary): BasicComponents {
  * de 11 s não ganha pontos de estabilidade/continuidade "perfeitas" sobre quase nada.
  * Determinística: a mesma medição sempre dá a mesma nota. Ver docs/AVALIACAO_BASICA.md.
  */
-export function computeBasicScore(summary: VoiceSummary): BasicScore {
-  const components = basicComponents(summary)
+/**
+ * Aplica a tolerância e o peso do nível aos dois componentes "de técnica" (estabilidade e
+ * continuidade); atividade, silêncio e qualidade não são sobre TÉCNICA de canto e ficam iguais
+ * em qualquer nível. Ver docs/NIVEIS_AVALIACAO.md.
+ */
+function applyProfile(components: BasicComponents, profile: EvaluationProfile): BasicComponents {
+  return {
+    ...components,
+    stability: reshapeForTolerance(components.stability, profile.toleranceExponent),
+    continuity: reshapeForTolerance(components.continuity, profile.toleranceExponent)
+  }
+}
+
+export function computeBasicScore(
+  summary: VoiceSummary,
+  profile: EvaluationProfile = EVALUATION_PROFILES.semiPro
+): BasicScore {
+  const components = applyProfile(basicComponents(summary), profile)
   const base = {
     mode: 'basic' as const,
     label: MODE_LABELS.basic,
@@ -101,13 +123,31 @@ export function computeBasicScore(summary: VoiceSummary): BasicScore {
   }
   const gate = clamp01(summary.voicedFraction / GATE_MIN_VOICED_FRACTION)
   const evidence = components.activity
+
+  // O "pacote" de qualidade do canto (estabilidade, continuidade, silêncio, qualidade) é
+  // renormalizado pelo próprio peso: assim, o multiplicador do perfil só troca a IMPORTÂNCIA
+  // relativa entre esses componentes (mais peso em estabilidade/continuidade tira peso relativo
+  // de silêncio/qualidade), sem mudar a escala total — o mesmo truque que a AVALIAÇÃO COM
+  // MELODIA já usa. Sem isso, aumentar peso E apertar a tolerância ao mesmo tempo podem se anular
+  // (ou até inverter) para quem já canta razoavelmente estável.
+  const bundleWeight =
+    BASIC_WEIGHTS.stability * profile.weight.stability +
+    BASIC_WEIGHTS.continuity * profile.weight.continuity +
+    BASIC_WEIGHTS.silence +
+    BASIC_WEIGHTS.quality
+  const bundleValue =
+    (BASIC_WEIGHTS.stability * profile.weight.stability * components.stability +
+      BASIC_WEIGHTS.continuity * profile.weight.continuity * components.continuity +
+      BASIC_WEIGHTS.silence * components.silence +
+      BASIC_WEIGHTS.quality * components.quality) /
+    bundleWeight
+  const bundleShare =
+    BASIC_WEIGHTS.stability +
+    BASIC_WEIGHTS.continuity +
+    BASIC_WEIGHTS.silence +
+    BASIC_WEIGHTS.quality
   const weighted =
-    BASIC_WEIGHTS.activity * components.activity +
-    evidence *
-      (BASIC_WEIGHTS.stability * components.stability +
-        BASIC_WEIGHTS.continuity * components.continuity +
-        BASIC_WEIGHTS.silence * components.silence +
-        BASIC_WEIGHTS.quality * components.quality)
+    BASIC_WEIGHTS.activity * components.activity + evidence * bundleShare * bundleValue
   return {
     ...base,
     score: Math.round(100 * gate * weighted),

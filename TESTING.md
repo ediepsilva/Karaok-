@@ -10,6 +10,7 @@ npm test            # Vitest: testes unitários e de integração (SQLite e disc
 npm run e2e         # build + abre o Electron de verdade e usa a interface
 npm run e2e:voice       # idem, para microfone/avaliação vocal (Fase 4)
 npm run e2e:celebration # idem, para aplausos + voz ao fim da apresentação (Fase 5)
+npm run e2e:levels      # idem, para os níveis de dificuldade e promoção
 ```
 
 Para rodar o mesmo teste ponta a ponta no app empacotado (depois de `npm run dist`), no PowerShell:

@@ -8,6 +8,7 @@ import { QueuePanel } from './components/QueuePanel'
 import { useCamera } from './camera/useCamera'
 import { useCelebration } from './celebration/useCelebration'
 import { useLibrary } from './hooks/useLibrary'
+import { useEvaluationLevel } from './voice/useEvaluationLevel'
 import { useMelody } from './voice/useMelody'
 import { useVoice } from './voice/useVoice'
 import { useQueue } from './hooks/useQueue'
@@ -70,6 +71,9 @@ export function App(): React.JSX.Element {
   const player = usePlayer(audioRef, canvasRef, { onEnded: () => void advanceRef.current() })
   const camera = useCamera(cameraVideoRef)
   const melody = useMelody(player.state.songId)
+  // O nível é por cantor: segue o nome digitado no campo "Cantor" (assim dá pra trocar o nome e
+  // ver/alterar o nível dele ANTES de apertar play, exatamente como pedido).
+  const evaluationLevel = useEvaluationLevel(singer)
   const voice = useVoice({
     phase: player.state.status,
     songId: player.state.songId,
@@ -77,6 +81,7 @@ export function App(): React.JSX.Element {
     songTitle: current?.song.title ?? '',
     singer: current?.song.singer ?? '',
     melody: melody.info?.notes ?? null,
+    evaluationProfile: evaluationLevel.profile,
     audioRef
   })
   const celebration = useCelebration(voice.result)
@@ -251,6 +256,7 @@ export function App(): React.JSX.Element {
           voice={voice}
           melody={melody}
           celebration={celebration}
+          evaluationLevel={evaluationLevel}
         />
       </main>
       {editing && (
