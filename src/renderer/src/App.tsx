@@ -7,6 +7,7 @@ import { PlayerPanel } from './components/PlayerPanel'
 import { QueuePanel } from './components/QueuePanel'
 import { useCamera } from './camera/useCamera'
 import { useLibrary } from './hooks/useLibrary'
+import { useVoice } from './voice/useVoice'
 import { useQueue } from './hooks/useQueue'
 import { usePlayer } from './player/usePlayer'
 
@@ -66,6 +67,14 @@ export function App(): React.JSX.Element {
   const advanceRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const player = usePlayer(audioRef, canvasRef, { onEnded: () => void advanceRef.current() })
   const camera = useCamera(cameraVideoRef)
+  const voice = useVoice({
+    phase: player.state.status,
+    songId: player.state.songId,
+    songDurationSec: current?.song.duration ?? (player.state.duration || null),
+    songTitle: current?.song.title ?? '',
+    singer: current?.song.singer ?? '',
+    audioRef
+  })
 
   // "Ligar ao tocar": só liga se o usuário pediu, e só uma vez por música (não religa após desligar).
   const { autoStart } = camera.state.prefs
@@ -234,6 +243,7 @@ export function App(): React.JSX.Element {
           canvasRef={canvasRef}
           camera={cameraUi}
           cameraVideoRef={cameraVideoRef}
+          voice={voice}
         />
       </main>
       {editing && (

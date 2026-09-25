@@ -3,6 +3,8 @@ import type { PlayableSong } from '@shared/types'
 import { formatTime } from '../format'
 import type { CameraController } from '../camera/useCamera'
 import { CameraControls } from './CameraControls'
+import { VoicePanel } from './VoicePanel'
+import type { VoiceController } from '../voice/useVoice'
 import type { PlayerControls } from '../player/usePlayer'
 
 interface Props {
@@ -16,6 +18,7 @@ interface Props {
   canvasRef: RefObject<HTMLCanvasElement | null>
   camera: CameraController
   cameraVideoRef: RefObject<HTMLVideoElement | null>
+  voice: VoiceController
 }
 
 export function PlayerPanel({
@@ -27,7 +30,8 @@ export function PlayerPanel({
   audioRef,
   canvasRef,
   camera,
-  cameraVideoRef
+  cameraVideoRef,
+  voice
 }: Props): React.JSX.Element {
   const { state } = player
   const stageRef = useRef<HTMLDivElement>(null)
@@ -102,6 +106,7 @@ export function PlayerPanel({
       )}
 
       <CameraControls camera={camera} />
+      <VoicePanel voice={voice} />
 
       <div className="timeline">
         <span className="time" data-testid="time-current">

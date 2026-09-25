@@ -654,3 +654,184 @@ body {
   min-width: 0;
   height: 100%;
 }
+
+/* ---------- Fase 4A: avaliação vocal (microfone) ---------- */
+
+.voice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voice-details summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--text);
+}
+
+.mic-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.mic-badge.on {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff9a9a;
+  border: 1px solid var(--danger);
+}
+
+.voice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.voice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.field.inline.grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+.check.strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.diag {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+.diag dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.diag dt {
+  color: var(--muted);
+}
+
+.diag dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.diag-level {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.diag-level .bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4cd0a0, #ffd166);
+  transition: width 0.08s linear;
+}
+
+.diag-level .bar.clip {
+  background: var(--danger);
+}
+
+.warn-text {
+  color: var(--warn);
+}
+
+.voice-result {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voice-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mode-label {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-2);
+}
+
+.score {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score small {
+  font-size: 14px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.components li {
+  display: grid;
+  grid-template-columns: 1fr 120px 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.meter {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.small-print {
+  font-size: 11px;
+}
