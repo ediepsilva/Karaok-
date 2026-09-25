@@ -64,8 +64,12 @@ Painel **🎤 Avaliação vocal** (embaixo do player). Detalhes da fórmula:
 
 - **Avaliação básica (modo recreativo).** Um MP3+G não traz a melodia, então o app **não sabe qual
   nota deveria ser cantada**. A nota (0–100) mede atividade vocal, estabilidade do pitch,
-  continuidade e qualidade do sinal, e o resultado avisa que **não mede afinação**. A avaliação com
-  melodia de referência (MIDI/KAR) é a Fase 4B.
+  continuidade e qualidade do sinal, e o resultado avisa que **não mede afinação**.
+- **Avaliação com melodia de referência (Fase 4B).** Se houver `Musica.mid`/`.kar`/`.midi` ao lado
+  da música (ou dentro do ZIP), o app compara a voz com a melodia (afinação, notas, ritmo, duração,
+  entrada das frases, consistência, % cantado; oitava ignorada, transposição detectada) e rotula o
+  resultado **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**. Detalhes em
+  [docs/AVALIACAO_COM_MELODIA.md](docs/AVALIACAO_COM_MELODIA.md).
 - **Microfone restrito.** A avaliação vem desligada. O microfone só abre ao apertar **Testar
   microfone** ou durante uma apresentação com **Avaliar minha apresentação** marcado, e é liberado
   ao terminar, ao desmarcar e após pausas longas. Nunca liga sozinho ao abrir o app.
@@ -126,4 +130,7 @@ arquivo estiver corrompido, é movido para `karaoke.db.corrupt-<data>` e um banc
 - Avaliação básica: não distingue canto de fala, e a música captada pelo microfone (sem fones)
   pode contar como voz. Ruído mascarado por voz contínua não é medido. Os limiares foram testados
   com sinais sintéticos e **ainda precisam ser ajustados com voz real** (TESTING.md).
-- Avaliação básica: não mede afinação nem compara com a melodia (Fase 4B).
+- Avaliação básica (sem MIDI/KAR): não mede afinação.
+- Avaliação com melodia: depende da qualidade do MIDI/KAR (trilha vocal clara, andamento e
+  sincronia com o MP3); não há alinhamento automático. Testada com melodias sintéticas; **falta
+  validar com MIDI/KAR reais e voz real** (TESTING.md).

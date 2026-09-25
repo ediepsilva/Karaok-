@@ -135,6 +135,27 @@ cantando; se houve "ambiente ruidoso"; a nota de 2–3 apresentações (cantando
 só falando); e se a nota pareceu justa. Nenhum desses números é um erro por si: servem para calibrar
 `src/renderer/src/voice/voice-config.ts`.
 
+## Fase 4B — Melodia de referência (checklist manual)
+
+Automatizado (não repetir à mão): parser MIDI/KAR, escolha de trilha, pontuação, importação,
+etiquetas, transposição, arquivo inválido, troca de trilha, persistência (`npm test`,
+`scripts/e2e-voice.mjs`, cenário E).
+
+**F. Com MIDI/KAR real** (coloque um `.kar`/`.mid` com o mesmo nome do seu MP3+G, na mesma pasta):
+
+1. Reescaneie a pasta: a música ganha a etiqueta **KAR/MIDI**.
+2. Abra **Avaliação vocal**: deve mostrar **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**, o nome do arquivo
+   e o número de notas. Se aparecer "Trilha da melodia", confira qual soa como a voz principal.
+3. Cante de verdade (com fones): o cartão final mostra a nota, as barras (afinação, notas, ritmo…),
+   "Notas acertadas: X de Y" e se houve transposição.
+4. Cante uma oitava acima/abaixo: não deve ser penalizado. Cante meio tom errado de propósito e
+   confira que a afinação cai.
+5. Se a nota parecer injusta com o áudio certo, o arquivo pode estar **defasado** do MP3: anote a
+   música e o tamanho do atraso (o ajuste manual de latência ajuda em deslocamentos pequenos).
+
+**Sem MIDI** (ex.: seu MP3+G sem arquivo de melodia): o app deve continuar em **AVALIAÇÃO BÁSICA**,
+avisando que não mede afinação.
+
 ## Resultados
 
 Ver o relatório final de cada fase (preenchido após a execução).

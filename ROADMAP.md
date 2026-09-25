@@ -45,10 +45,14 @@ qual foi usado.
   [docs/AVALIACAO_BASICA.md](docs/AVALIACAO_BASICA.md).
 - Contratos (`reference.ts`) prontos para a melodia de referência. Sem MIDI/KAR ainda.
 
-### Fase 4B — Melodia de referência (pendente, aguarda autorização)
+### Fase 4B — Melodia de referência (implementada; falta teste manual com arquivos e voz reais)
 
-MIDI/KAR ao lado da música (`Musica.mid` / `Musica.kar`), comparação de pitch com a melodia,
-ritmo, entrada das frases, duração e nota de afinação: **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**.
+- MIDI/KAR ao lado da música ou dentro do ZIP; parser SMF 0/1/2, KAR, RMID; escolha automática
+  e manual da trilha da melodia (guardada por música).
+- Comparação de pitch com a melodia: afinação, notas, ritmo, duração, entrada das frases,
+  consistência e % cantado; oitava ignorada; transposição detectada.
+- **AVALIAÇÃO COM MELODIA DE REFERÊNCIA**; sem melodia continua **AVALIAÇÃO BÁSICA**.
+  Ver [docs/AVALIACAO_COM_MELODIA.md](docs/AVALIACAO_COM_MELODIA.md).
 
 ## Fase 5 — Nota + Aplausos + Voz
 

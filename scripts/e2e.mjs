@@ -901,7 +901,7 @@ try {
   db.close()
   check(
     '28. SQLite contém as músicas e contador de execuções',
-    rows.n === 5 && rows.plays >= 1 && version === 2,
+    rows.n === 5 && rows.plays >= 1 && version === 3,
     `songs=${rows.n} plays=${rows.plays} user_version=${version}`
   )
 

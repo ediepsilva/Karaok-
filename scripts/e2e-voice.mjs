@@ -1,5 +1,5 @@
 /**
- * Teste ponta a ponta da FASE 4A (microfone + avaliação básica), com o app Electron real.
+ * Teste ponta a ponta da FASE 4A/4B (microfone, avaliação básica e com melodia MIDI/KAR), com o app Electron real.
  * O microfone é um WAV conhecido reproduzido pelo Chromium (--use-file-for-fake-audio-capture);
  * SEM a flag que pula o pedido de permissão, para exercitar a trava do microfone do app.
  *
@@ -290,7 +290,7 @@ try {
       /Permissão de microfone concedida/.test(log) &&
       /Microfone ativo/.test(log) &&
       /Microfone liberado/.test(log) &&
-      /Avaliação básica concluída/.test(log)
+      /Avaliação concluída/.test(log)
   )
   const active = (log.match(/Microfone ativo/g) ?? []).length
   const released = (log.match(/Microfone liberado/g) ?? []).length
@@ -385,6 +385,156 @@ try {
     melodyScore >= 70 && melodyScore <= 100,
     `${melodyScore}/100`
   )
+  await app.close()
+  // =====================================================================
+  // Cenário E — melodia de referência MIDI/KAR (Fase 4B)
+  // =====================================================================
+  console.log('\n## Cenário E: melodia de referência (test-assets/melody)')
+  const melodyLibrary = join(work, 'library-melody')
+  cpSync(join(root, 'test-assets', 'melody'), melodyLibrary, { recursive: true })
+  const runSong = async (page, title) => {
+    await playSong(page, title)
+    await page.waitForSelector(T('voice-result'), { timeout: 60000 })
+    const out = {
+      score: number(await text(page, 'voice-score')),
+      label: await text(page, 'voice-result-label'),
+      mode: await page.getAttribute(T('voice-result'), 'data-mode'),
+      notes: (await page.textContent(T('ref-notes')).catch(() => '')) ?? '',
+      transpose: (await page.textContent(T('ref-transpose')).catch(() => '')) ?? ''
+    }
+    await page.click(`${T('voice-result')} .link`)
+    await waitText(page, 'mic-status', /INATIVO/, 15000)
+    return out
+  }
+  ;({ app, page } = await launch('steady-a440.wav'))
+  await app.evaluate(({ dialog }, dir) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [dir] })
+  }, melodyLibrary)
+  await page.click('text=Adicionar pasta de músicas')
+  await waitText(page, 'import-summary', /4 música\(s\) adicionada\(s\)/, 30000)
+  check(
+    'E1. importação detecta MIDI/KAR ao lado das músicas',
+    /com melodia MIDI\/KAR/.test(await text(page, 'import-summary')),
+    await text(page, 'import-summary')
+  )
+  const tags = await page.$$eval(T('tag-melody'), (els) => els.map((e) => e.textContent))
+  check(
+    'E2. etiquetas MIDI e KAR aparecem na biblioteca',
+    tags.includes('MIDI') && tags.includes('KAR'),
+    tags.join(',')
+  )
+  await openVoice(page)
+  if (!(await page.isChecked(T('voice-enabled')))) await page.click(T('voice-enabled'))
+
+  // E3-E6: A4 contínuo contra melodia A4
+  await playSong(page, 'Nota La')
+  await waitText(page, 'melody-status', /Nota La\.mid|MID/i, 15000)
+  const status = await text(page, 'melody-status')
+  check(
+    'E3. com MIDI, o modo passa a AVALIAÇÃO COM MELODIA DE REFERÊNCIA (com a melodia identificada)',
+    /AVALIAÇÃO COM MELODIA DE REFERÊNCIA/.test(await text(page, 'voice-mode-label')) &&
+      /8 notas/.test(status),
+    status
+  )
+  await page.waitForSelector(T('voice-result'), { timeout: 60000 })
+  const la = {
+    score: number(await text(page, 'voice-score')),
+    label: await text(page, 'voice-result-label'),
+    mode: await page.getAttribute(T('voice-result'), 'data-mode'),
+    notes: await text(page, 'ref-notes'),
+    transpose: await text(page, 'ref-transpose')
+  }
+  check(
+    'E4. resultado rotulado AVALIAÇÃO COM MELODIA DE REFERÊNCIA',
+    la.label === 'AVALIAÇÃO COM MELODIA DE REFERÊNCIA' && la.mode === 'reference',
+    la.label
+  )
+  check('E5. cantar a nota certa rende nota alta (≥ 85)', la.score >= 85, `${la.score}/100`)
+  check(
+    'E6. reconhece que está no tom, sem transposição',
+    /no tom/.test(la.transpose),
+    la.transpose
+  )
+  check('E6b. informa notas acertadas', /Notas acertadas: [4-8] de 8/.test(la.notes), la.notes)
+  await page.click(`${T('voice-result')} .link`)
+  await waitText(page, 'mic-status', /INATIVO/, 15000)
+
+  // E7: KAR em outro tom (C4) cantado em A4 -> transposição de 3 semitons
+  const doRes = await runSong(page, 'Nota Do')
+  check(
+    'E7. KAR: transposição de 3 semitons detectada e nota alta (≥ 80)',
+    /transposição detectada: [+-]3 semitons/.test(doRes.transpose) && doRes.score >= 80,
+    `${doRes.score}/100 · ${doRes.transpose}`
+  )
+
+  // E8: melodia quebrada -> aviso e volta ao modo básico
+  await playSong(page, 'Melodia Quebrada')
+  await waitText(page, 'melody-error', /melodia/i, 15000)
+  check(
+    'E8. arquivo de melodia inválido: avisa e cai para AVALIAÇÃO BÁSICA (nunca finge afinação)',
+    /AVALIAÇÃO BÁSICA/.test(await text(page, 'voice-mode-label')) &&
+      /Usando a avaliação básica/.test(await text(page, 'melody-error'))
+  )
+  await page.waitForSelector(T('voice-result'), { timeout: 60000 })
+  const broken = {
+    label: await text(page, 'voice-result-label'),
+    score: number(await text(page, 'voice-score'))
+  }
+  check(
+    'E9. sem melodia utilizável o resultado continua AVALIAÇÃO BÁSICA',
+    broken.label === 'AVALIAÇÃO BÁSICA' && broken.score >= 70,
+    `${broken.label} ${broken.score}/100`
+  )
+  await page.click(`${T('voice-result')} .link`)
+  await waitText(page, 'mic-status', /INATIVO/, 15000)
+
+  // E10: duas trilhas -> escolha e persistência
+  await playSong(page, 'Duas Trilhas')
+  await page.waitForSelector(T('melody-track'), { timeout: 15000 })
+  const trackOptions = await page.$$eval(`${T('melody-track')} option`, (o) =>
+    o.map((x) => ({ value: x.value, label: x.textContent }))
+  )
+  const before = await page.inputValue(T('melody-track'))
+  const other = trackOptions.find((o) => o.value !== before)
+  check(
+    'E10. música com duas trilhas oferece a escolha e sugere uma',
+    trackOptions.length === 2 && trackOptions.some((o) => /sugerida/.test(o.label)),
+    trackOptions.map((o) => o.label).join(' | ')
+  )
+  await page.selectOption(T('melody-track'), other.value)
+  await sleep(800)
+  await page.click(T('btn-stop'))
+  await app.close()
+  ;({ app, page } = await launch('steady-a440.wav'))
+  await openVoice(page)
+  await playSong(page, 'Duas Trilhas')
+  await page.waitForSelector(T('melody-track'), { timeout: 15000 })
+  check(
+    'E11. a trilha escolhida fica guardada após reabrir o app',
+    (await page.inputValue(T('melody-track'))) === other.value,
+    `esperado ${other.value}, veio ${await page.inputValue(T('melody-track'))}`
+  )
+  await page.click(T('btn-stop'))
+  await app.close()
+
+  // E12: cantar a melodia errada contra a referência A4 -> nota baixa
+  ;({ app, page } = await launch('melody.wav'))
+  await openVoice(page)
+  if (!(await page.isChecked(T('voice-enabled')))) await page.click(T('voice-enabled'))
+  const wrong = await runSong(page, 'Nota La')
+  check(
+    'E12. cantar notas diferentes da referência rende nota bem menor que a certa',
+    wrong.mode === 'reference' && wrong.score < la.score - 25,
+    `${wrong.score}/100 (certa: ${la.score}) · ${wrong.notes}`
+  )
+  await app.close()
+
+  // E13: silêncio contra referência -> 0
+  ;({ app, page } = await launch('silence.wav'))
+  await openVoice(page)
+  if (!(await page.isChecked(T('voice-enabled')))) await page.click(T('voice-enabled'))
+  const quiet = await runSong(page, 'Nota La')
+  check('E13. silêncio contra a referência recebe 0', quiet.score === 0, `${quiet.score}/100`)
   await app.close()
 } catch (error) {
   failed++

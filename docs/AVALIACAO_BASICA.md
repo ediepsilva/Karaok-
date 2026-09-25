@@ -6,7 +6,8 @@
 > **O que esta nota NÃO É:** uma avaliação de afinação. Sem uma melodia de referência o aplicativo
 > **não sabe qual nota deveria ser cantada** e, portanto, nunca afirma "você acertou X% das notas".
 > A avaliação **com melodia de referência** (afinação, notas, ritmo, duração, entrada das frases)
-> é a Fase 4B (MIDI/KAR) e usa o rótulo `AVALIAÇÃO COM MELODIA DE REFERÊNCIA`.
+> é a Fase 4B (MIDI/KAR), descrita em [AVALIACAO_COM_MELODIA.md](AVALIACAO_COM_MELODIA.md), e usa
+> o rótulo `AVALIAÇÃO COM MELODIA DE REFERÊNCIA`.
 
 Todos os limiares e pesos ficam em um único arquivo:
 [`src/renderer/src/voice/voice-config.ts`](../src/renderer/src/voice/voice-config.ts).

@@ -6,6 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildFixtureCdg, buildFixtureMp3 } from './lib/fixture-media'
+import { TrackBuilder, buildMidi, melodyMidi } from './lib/midi-builder'
 import { buildZip } from './lib/zip-builder'
 import { concat, silence, toWav, voiceTone, whiteNoise } from './lib/voice-signals'
 
@@ -58,5 +59,52 @@ console.log(`mp3g-zip/Zip Artista - Musica Zipada.zip (${zip.length} bytes)`)
     const wav = toWav(signal, rate)
     writeFileSync(join(voiceDir, name), wav)
     console.log(`voice/${name} (${wav.length} bytes)`)
+  }
+}
+
+// Melodia de referência (Fase 4B): músicas de 8 s com MIDI/KAR ao lado. Ficam em test-assets/melody/,
+// separadas de mp3g/ para não misturar com as músicas que testam a avaliação básica.
+{
+  const dir = join(process.cwd(), 'test-assets', 'melody')
+  mkdirSync(dir, { recursive: true })
+  const mp3 = buildFixtureMp3(8)
+  const cdg = buildFixtureCdg(8)
+  const song = (name: string, extension: string, midi: Buffer): void => {
+    writeFileSync(join(dir, `${name}.mp3`), mp3)
+    writeFileSync(join(dir, `${name}.cdg`), cdg)
+    writeFileSync(join(dir, `${name}.${extension}`), midi)
+    console.log(`melody/${name}.${extension}`)
+  }
+  const line = (pitch: number): [number, number, number][] =>
+    Array.from({ length: 8 }, (_, i) => [pitch, i, 0.9])
+
+  // A4 em todas as notas: bate com o WAV de tom estável (steady-a440.wav)
+  song('Ref Artista - Nota La', 'mid', melodyMidi(line(69)))
+  // C4 com letra KAR: o mesmo WAV (A4) fica 3 semitons fora do tom (transposição detectada)
+  song(
+    'Ref Artista - Nota Do',
+    'kar',
+    melodyMidi(line(60), {
+      kar: true,
+      lyrics: [
+        [0, '/Ola '],
+        [2, 'mun'],
+        [4, 'do'],
+        [6, '\\Fim']
+      ]
+    })
+  )
+  // arquivo de melodia corrompido: o app deve avisar e cair para a avaliação básica
+  song('Ref Artista - Melodia Quebrada', 'mid', Buffer.from('isto nao e um arquivo MIDI valido'))
+  // duas trilhas candidatas (A4 e C5): permite testar a troca de trilha
+  {
+    const tempo = new TrackBuilder().tempo(0, 500000)
+    const first = new TrackBuilder().name('Melody')
+    const second = new TrackBuilder().name('Harmonia Aguda')
+    for (let i = 0; i < 8; i++) {
+      first.noteSec(i, 0.9, 69)
+      second.noteSec(i, 0.9, 72)
+    }
+    song('Ref Artista - Duas Trilhas', 'mid', buildMidi([tempo, first, second]))
   }
 }
